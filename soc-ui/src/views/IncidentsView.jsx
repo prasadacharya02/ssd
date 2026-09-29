@@ -47,7 +47,13 @@ export default function IncidentsView({ data, query }) {
   return (
     <div className="space-y-6">
       <PageHeader lastSync={data.lastSync} onExport={exportFeed} />
-      <MetricBoard stats={data.stats} threat={data.threat} entropy={data.entropy} />
+      <MetricBoard
+        stats={data.stats}
+        threat={data.threat}
+        entropySeries={data.entropySeries}
+        entropyConfig={data.entropyConfig}
+        connected={data.connected}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <IncidentTable events={data.events} query={query} onExport={exportFeed} />

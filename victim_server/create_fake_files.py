@@ -262,10 +262,18 @@ def make_pdf_content():
         + b"\n%%EOF\n"
     )
     return output
-def make_binary_content(size_kb):
-    """Create fake image/zip content — realistic file structure"""
-    # Simple structured pattern (like real files have headers)
-    header = b'\x89PNG\r\n\x1a\n' + b'\x00' * 8
+def make_binary_content(size_kb, magic=b"\xff\xd8\xff\xe0"):
+    """Create fake media/archive content with a VALID magic header.
+
+    The magic must match the file's extension: the defender's analyzer
+    validates magic bytes against the declared type (magic_ok). A PNG
+    header inside a ".jpg" is exactly the disguise signal ransomware
+    produces — fixtures stamped like that are flagged as ciphertext
+    during every reset, flooding the SOC feed with false quarantines.
+    The body stays a structured (non-uniform) pattern so chi2 remains
+    far from the ciphertext range.
+    """
+    header = bytes(magic) + b"\x00" * 8
     body = bytes([i % 128 for i in range(size_kb * 1024)])
     return header + body
 # ═══════════════════════════════════════════════════
@@ -283,8 +291,8 @@ FILES = {
     "Downloads": [
         ("Invoice_INV-2024-1042.pdf",   "binary", make_pdf_content),
         ("Invoice_INV-2024-1043.pdf",   "binary", make_pdf_content),
-        ("Software_Update.zip",         "binary", lambda: make_binary_content(150)),
-        ("Report_Draft.docx",           "text", make_client_notes),
+        ("Software_Update.zip",         "binary", lambda: make_binary_content(150, magic=b"PK\x03\x04")),
+        ("Report_Draft.docx",           "binary", make_docx_content),
     ],
     "Pictures": [
         ("Family_Vacation_2023.jpg",    "binary", lambda: make_binary_content(200)),

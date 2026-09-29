@@ -242,6 +242,18 @@ def make_decision(event: dict) -> int:
     if (magic_bad or ciphertext_struct) and score >= 50:
         return config.ACTION_TERMINATE_QUARANTINE
 
+    # Unknown target extension after a rename-disguise: magic/chi²
+    # ground truth does not exist for an unknown extension, so the
+    # rule above deliberately does not fire on chi² alone. But a
+    # rename whose content becomes statistically uniform ciphertext
+    # (chi² ≈ 255, H >= 7.0) is ransomware on first sight — no
+    # legitimate rename turns a file's content into flat-random
+    # bytes. The rename disguise is REQUIRED here: a newly CREATED
+    # unknown-format binary stays alert-only (it may be a legitimate
+    # new binary format), keeping the 0-false-quarantine bar.
+    if any_ciphertext_shape and ext_chg:
+        return config.ACTION_TERMINATE_QUARANTINE
+
     # A high score without corroboration is only an alert.
     if score >= 40:
         return config.ACTION_ALERT
@@ -288,6 +300,16 @@ def execute_response(action: int,
     fname     = os.path.basename(file_path)
     outcome   = status
 
+    # ── Incident timeline (T1..T6) recorded for the forensic report.
+    # Latency deltas are computed by generate_report. T0 (attack
+    # start) and T7 (hash verification) are measured externally
+    # (verify_demo.py) from independent sources — the defender does
+    # not grade its own homework.
+    timing = {
+        "t1_event_observed"  : event.get("timestamp"),
+        "t2_response_started": datetime.now().isoformat(),
+    }
+
     # ── Files inside the quarantine / backup stores are evidence the
     # defender already holds. Tamper there (a DELETED event) is still
     # reported and can kill the attacker, but the evidence itself must
@@ -314,6 +336,7 @@ def execute_response(action: int,
     if action == config.ACTION_TERMINATE:
         log.warning(f"  [KILL]   {fname} | H={entropy:.2f}")
         killed = _terminate_process(pid, procname, proc)
+        timing["t4_process_containment_done"] = datetime.now().isoformat()
         terminate_result = "TERMINATED" if killed else "TERMINATE_REFUSED"
         outcome = "DRY_RUN_TERMINATE" if config.DRY_RUN else (
             "TERMINATED" if killed else "TERMINATE_REFUSED"
@@ -323,6 +346,7 @@ def execute_response(action: int,
     if action == config.ACTION_TERMINATE_QUARANTINE:
         log.warning(f"  [THREAT] {fname} | H={entropy:.2f}")
         killed = _terminate_process(pid, procname, proc)
+        timing["t4_process_containment_done"] = datetime.now().isoformat()
         terminate_result = "TERMINATED" if killed else "TERMINATE_REFUSED"
         # Carry the kill into the vault record (the campaign's kill
         # covers sweep files contained right after it).
@@ -336,6 +360,7 @@ def execute_response(action: int,
             quarantine_result = _quarantine_file(file_path, event=event,
                                                  action=action)
         log.warning(f"  [ACTION] Quarantine result: {quarantine_result}")
+        timing["t5_quarantine_done"] = datetime.now().isoformat()
         outcome = quarantine_result if isinstance(quarantine_result, str) else status
         if config.DRY_RUN:
             outcome = "DRY_RUN_QUARANTINE"
@@ -402,6 +427,7 @@ def execute_response(action: int,
                     log.warning(f"  [RESTORE] Rename-back failed: {e}")
         if restore_result:
             outcome = f"{outcome}+{restore_result}"
+            timing["t6_recovery_done"] = datetime.now().isoformat()
 
     # ── FORENSIC REPORT for every incident ────────
     if action >= config.ACTION_ALERT:
@@ -415,6 +441,7 @@ def execute_response(action: int,
                     "quarantine":           quarantine_result,
                     "restore":              restore_result,
                     "blockchain_reference": file_hash or None,
+                    "timing":               timing,
                 }
             )
             if report_path:

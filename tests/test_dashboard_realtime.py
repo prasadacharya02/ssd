@@ -120,8 +120,28 @@ class DashboardApiTests(unittest.TestCase):
         data = self.client.get("/api/pipeline").get_json()
         self.assertFalse(data["watching_victim"])
 
+    def test_entropy_config_reflects_backend_thresholds(self):
+        """The live entropy chart must draw the SAME limits the decision
+        engine uses — never hard-coded UI constants."""
+        import config
+        data = self.client.get("/api/entropy/config").get_json()
+        self.assertEqual(data["warning_threshold"], config.ENTROPY_THRESHOLD)
+        self.assertEqual(data["critical_threshold"], 7.0)
+        self.assertEqual(data["delta_threshold"],
+                         config.ENTROPY_DELTA_THRESHOLD)
+        self.assertIn("baseline", data)      # None until normal events exist
+        self.assertEqual(data["max_bits"], 8.0)
+
     def test_dashboard_uses_locally_served_client_libraries(self):
-        html = self.client.get("/").get_data(as_text=True)
+        # The React SPA at "/" is the primary dashboard — a
+        # self-contained bundle. It must never regress to the broken
+        # python-socketio 5.x URL (the original bug #2).
+        spa = self.client.get("/").get_data(as_text=True)
+        self.assertNotIn('src="/socket.io/socket.io.js"', spa)
+        # The legacy single-file dashboard lives at "/legacy" and
+        # relies on locally vendored client libraries — pinned so the
+        # live channel works without internet access.
+        html = self.client.get("/legacy").get_data(as_text=True)
         self.assertNotIn('src="/socket.io/socket.io.js"', html)
         for lib in ("vendor/socket.io.min.js", "vendor/chart.umd.min.js"):
             self.assertIn(lib, html)

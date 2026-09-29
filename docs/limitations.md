@@ -8,13 +8,14 @@ This project is a **controlled teaching lab with industry-level engineering**, n
 - **Limitation**: Process attribution is verified only when process has file open. Other guesses stored but cannot terminate. Best-effort, can be dodged by sophisticated malware.
 - **Limitation**: Ransom-note signal is signature-based (filenames, phrase list). Unknown note wording with no matching filename relies on entropy/speed signals.
 - **Limitation**: Defense-tamper signal watches backup_storage/ and quarantine_storage/ for deletions. Backup store's own housekeeping (manifest rewrites, temp files) exempted by name, but version evictions beyond ENTROPY_BACKUP_MAX_VERSIONS (default 10) can look like tampering - raises alert (safe direction, not missed attack).
-- **Known Blind Spot**: `image_blindspot` - in-place encryption of already-high-entropy media (jpg 7.0-7.8, mp4 7.0-7.9) without rename leaves entropy within normal range. Encrypted payload indistinguishable from native compressed content by entropy alone. Rule engine 0/6, RF 6/6 but with 6 false quarantines. Published openly.
+- **Former Blind Spot - CLOSED**: `image_blindspot` (in-place encryption of already-high-entropy media: jpg 7.0-7.8, mp4 7.0-7.9, no rename) was invisible to entropy alone. It is now caught by two structural ciphertext fingerprints: magic-header validation (real JPEG starts `FF D8 FF`, ciphertext does not) and the chi² byte-uniformity test (ciphertext flat at chi² ≈ 255; real compressed media ≫ 1000). Measured: rule engine 6/6 detected + quarantined, still 0 false quarantines on media workloads.
+- **Remaining gap**: in-place encryption of files with *unknown* extensions (no rename, no delta, no magic ground truth to validate against) is alert-level only — entropy + chi² raise an alert, but the rule engine deliberately will not quarantine an unknown-format file on chi² evidence alone. Campaign correlation (2+ suspicious files in 15 s) can still escalate.
 
 ## AI - Honest Scope
 
 - DQN weights optional. Without ai/dqn_weights.pth rule engine decides. Dashboard fields engine/confidence/explanation come from persisted events, not fabricated scores. Torch optional, fallback to rules.
 - Training data synthetic, versioned schema_version 1, held-out split.
-- Random Forest second classifier (ai/rf_weights.json, python -m ai.train_rf) trained on seeded synthetic data (11 features), opt-in engine ENTROPY_AI_ENGINE=rf. Measured: 48/48 attacks but 6 FQ on media, so NOT default. Rule engine keeps 0-FQ bar. SHAP per-incident, fallback to global importances if SHAP missing. Synthetic data does not predict real-world prevalence.
+- Random Forest second classifier (ai/rf_weights.json, python -m ai.train_rf) trained on seeded synthetic data (11 features), opt-in engine ENTROPY_AI_ENGINE=rf. Measured on the benchmark battery: 48/48 attacks, 0 false quarantines — same headline as the rule engine, which stays the default (deterministic, no model file needed). SHAP per-incident, fallback to global importances if SHAP missing. Synthetic data does not predict real-world prevalence.
 - Hard-confirmation signals (ransom note, defense tamper, exchange-confirmed fingerprint) applied BEFORE any learned engine, so no model can downgrade confirmed incident.
 
 ## Blockchain - Honest
@@ -62,4 +63,4 @@ This project is a **controlled teaching lab with industry-level engineering**, n
 
 ## For Examiners
 
-This is working system with 126 tests pass, deterministic benchmark, live demo verified. Not PowerPoint. Show kill at file 2, 18/18 restored, vault evidence. Don't claim 100% detection, blockchain immutable, or quarantine decryption.
+This is working system with 176 tests pass, deterministic benchmark, live demo verified. Not PowerPoint. Show kill at file 2, 18/18 restored, vault evidence. The 100% figure is measured on the lab benchmark battery — do not claim 100% detection of real-world ransomware, do not claim the fallback ledger is an immutable public chain, and do not claim quarantined ciphertext can be decrypted.
