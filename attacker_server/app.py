@@ -530,16 +530,68 @@ def send_text(
     )
 
 
+# Bind addresses that describe "every interface" and can never be opened by
+# a browser, so they must not be propagated into a published link.
+_WILDCARD_HOSTNAMES = frozenset({"0.0.0.0", "::", "[::]", "*", ""})
+
+
+def _sibling_url(handler, own_port, sibling_port, override):
+    """Resolve a sibling service URL that is reachable from *this* client.
+
+    *override* (an explicit ``ENTROPY_PUBLIC_*_URL``) wins outright.
+    Otherwise the URL is derived from the request's Host header so it stays
+    valid however the lab is published:
+
+      ``127.0.0.1:8001``          -> ``127.0.0.1:5000``     (plain host:port)
+      ``8001-preview.example.com``-> ``5000-preview.example.com``
+                                  (port-labelled reverse proxy — the shape
+                                   hosted/preview environments use)
+
+    Deriving from the request is what stops the console from ever emitting a
+    wildcard bind address such as ``http://0.0.0.0:5000``, which no browser
+    can open.
+    """
+    if override:
+        return override
+
+    scheme = "https" if handler.headers.get("X-Forwarded-Proto") == "https" else "http"
+    host_header = (handler.headers.get("Host") or "").strip()
+
+    # Strip any port, tolerating the bracketed IPv6 form "[::1]:8001".
+    if host_header.startswith("["):
+        end = host_header.find("]")
+        hostname = host_header[1:end] if end != -1 else ""
+    else:
+        hostname = host_header.partition(":")[0]
+
+    # A client that typed the bind address itself sends Host: 0.0.0.0 — not a
+    # destination, so fall back to loopback rather than echoing it back.
+    if hostname in _WILDCARD_HOSTNAMES:
+        hostname = "127.0.0.1"
+
+    prefix = f"{own_port}-"
+    if hostname.startswith(prefix):
+        return f"{scheme}://{sibling_port}-{hostname[len(prefix):]}"
+    # IPv6 literals must stay bracketed inside a URL authority.
+    literal = f"[{hostname}]" if ":" in hostname else hostname
+    return f"{scheme}://{literal}:{sibling_port}"
+
+
 def _runtime_links(handler):
     """Public URLs for the sibling services, resolved per request."""
-    host_header = handler.headers.get("Host", "127.0.0.1:8001")
-    host = host_header.split(":", 1)[0]
-    scheme = "https" if handler.headers.get("X-Forwarded-Proto") == "https" else "http"
-
     return {
-        "__VICTIM_URL__": config.PUBLIC_VICTIM_URL or f"{scheme}://{host}:8002",
-        "__DASHBOARD_URL__": config.PUBLIC_DASHBOARD_URL or f"{scheme}://{host}:5000",
-        "__ATTACKER_URL__": config.PUBLIC_ATTACKER_URL or f"{scheme}://{host}:8001",
+        "__VICTIM_URL__": _sibling_url(
+            handler, config.ATTACKER_PORT, config.VICTIM_PORT,
+            config.PUBLIC_VICTIM_URL,
+        ),
+        "__DASHBOARD_URL__": _sibling_url(
+            handler, config.ATTACKER_PORT, config.DASHBOARD_PORT,
+            config.PUBLIC_DASHBOARD_URL,
+        ),
+        "__ATTACKER_URL__": _sibling_url(
+            handler, config.ATTACKER_PORT, config.ATTACKER_PORT,
+            config.PUBLIC_ATTACKER_URL,
+        ),
         "__CONTROL_TOKEN__": getattr(config, "CONTROL_TOKEN", "") or "",
     }
 

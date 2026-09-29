@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from functools import wraps
 from flask import Flask, jsonify, render_template, request, session, send_from_directory
+from flask.sessions import SecureCookieSessionInterface
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
@@ -31,6 +33,42 @@ ALLOWED_FOLDERS = frozenset({"Documents", "Downloads", "Desktop", "Pictures", "Q
 
 app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "templates"))
 app.secret_key = getattr(config, "SECRET_KEY", "entropy-local-development-only")
+
+# The explorer is often published behind a reverse proxy (hosted preview,
+# port-forward, ngrok, ...). Trust its forwarding headers so request.is_secure
+# and the URL helpers describe what the BROWSER used, not the local socket.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+
+def _client_uses_tls() -> bool:
+    """True when the browser reached us over HTTPS, directly or via a proxy."""
+    forwarded = (request.headers.get("X-Forwarded-Proto") or "").split(",")[0].strip()
+    return forwarded.lower() == "https" or request.is_secure
+
+
+class _EmbeddableSessionInterface(SecureCookieSessionInterface):
+    """Session cookies that survive being viewed inside another origin.
+
+    A default ``SameSite=Lax`` cookie is NOT sent on the cross-site requests
+    an embedded (iframe) view makes, so the vault would accept the PIN and
+    then immediately look locked again — the quarantine view renders empty.
+    Over TLS we therefore emit ``SameSite=None; Secure``, which browsers do
+    send in that context. ``SameSite=None`` is rejected outright without
+    ``Secure``, so on plain HTTP (the local 127.0.0.1 demo) we keep ``Lax``
+    and the vault works exactly as before.
+    """
+
+    def get_cookie_samesite(self, app):
+        return "None" if _client_uses_tls() else "Lax"
+
+    def get_cookie_secure(self, app):
+        return _client_uses_tls()
+
+    def get_cookie_httponly(self, app):
+        return True
+
+
+app.session_interface = _EmbeddableSessionInterface()
 
 # Vault Config
 VAULT_USER = getattr(config, "VAULT_USER", "victim_user")
