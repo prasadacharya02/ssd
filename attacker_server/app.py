@@ -577,27 +577,35 @@ def _sibling_url(handler, own_port, sibling_port, override):
     return f"{scheme}://{literal}:{sibling_port}"
 
 
-def _runtime_links(handler):
-    """Public URLs for the sibling services, resolved per request."""
+def _runtime_links(handler, client_derives=False):
+    """Public URLs for the sibling services, resolved per request.
+
+    *client_derives* is set for the React console, which resolves its own
+    links from ``window.location``. That is strictly more reliable than
+    anything the server can infer, because a proxy is free to rewrite the
+    Host header before the request arrives — so for that page we inject only
+    an explicit operator override and leave the rest empty, letting the
+    browser's own URL win.
+    """
+    def link(sibling_port, override):
+        if client_derives:
+            return override
+        return _sibling_url(handler, config.ATTACKER_PORT, sibling_port, override)
+
     return {
-        "__VICTIM_URL__": _sibling_url(
-            handler, config.ATTACKER_PORT, config.VICTIM_PORT,
-            config.PUBLIC_VICTIM_URL,
-        ),
-        "__DASHBOARD_URL__": _sibling_url(
-            handler, config.ATTACKER_PORT, config.DASHBOARD_PORT,
-            config.PUBLIC_DASHBOARD_URL,
-        ),
-        "__ATTACKER_URL__": _sibling_url(
-            handler, config.ATTACKER_PORT, config.ATTACKER_PORT,
-            config.PUBLIC_ATTACKER_URL,
-        ),
+        "__VICTIM_URL__": link(config.VICTIM_PORT, config.PUBLIC_VICTIM_URL),
+        "__DASHBOARD_URL__": link(config.DASHBOARD_PORT,
+                                  config.PUBLIC_DASHBOARD_URL),
+        "__ATTACKER_URL__": link(config.ATTACKER_PORT,
+                                 config.PUBLIC_ATTACKER_URL),
         "__CONTROL_TOKEN__": getattr(config, "CONTROL_TOKEN", "") or "",
     }
 
 
-def _render_html(html, handler):
-    for placeholder, value in _runtime_links(handler).items():
+def _render_html(html, handler, client_derives=False):
+    for placeholder, value in _runtime_links(
+        handler, client_derives=client_derives
+    ).items():
         html = html.replace(placeholder, value)
     return html
 
@@ -607,15 +615,23 @@ def console_index_available():
 
 
 def send_console_html(handler):
-    """Serve the built React console with runtime values injected."""
+    """Serve the built React console with runtime values injected.
+
+    The bundle resolves the sibling links itself (see console-config.js), so
+    only an explicit operator override is injected here.
+    """
     with open(CONSOLE_INDEX, "r", encoding="utf-8") as file:
-        html = _render_html(file.read(), handler)
+        html = _render_html(file.read(), handler, client_derives=True)
 
     _send_bytes(handler, html.encode("utf-8"), "text/html; charset=utf-8")
 
 
 def send_html(handler):
-    """Legacy single-file console (fallback when the bundle is absent)."""
+    """Legacy single-file console (fallback when the bundle is absent).
+
+    Static HTML cannot derive a link at runtime, so the server resolves the
+    values from the request for this page.
+    """
     with open(LEGACY_HTML_PATH, "r", encoding="utf-8") as file:
         html = _render_html(file.read(), handler)
 

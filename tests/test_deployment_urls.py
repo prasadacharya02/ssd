@@ -64,6 +64,24 @@ class SiblingLinkTests(unittest.TestCase):
             links = attacker_app._runtime_links(handler)
         self.assertEqual(links["__DASHBOARD_URL__"], "https://soc.internal")
 
+    def test_react_console_defers_to_the_browser(self):
+        """The bundle derives its own links from window.location — more
+        reliable than the Host a proxy chose to forward — so the server must
+        inject nothing unless the operator set an explicit override."""
+        handler = _Handler("127.0.0.1:8001")
+        with mock.patch.object(attacker_app.config, "PUBLIC_VICTIM_URL", ""), \
+             mock.patch.object(attacker_app.config, "PUBLIC_DASHBOARD_URL", ""):
+            links = attacker_app._runtime_links(handler, client_derives=True)
+        self.assertEqual(links["__VICTIM_URL__"], "")
+        self.assertEqual(links["__DASHBOARD_URL__"], "")
+
+    def test_react_console_still_honours_an_explicit_override(self):
+        handler = _Handler("127.0.0.1:8001")
+        with mock.patch.object(attacker_app.config, "PUBLIC_DASHBOARD_URL",
+                               "https://soc.internal"):
+            links = attacker_app._runtime_links(handler, client_derives=True)
+        self.assertEqual(links["__DASHBOARD_URL__"], "https://soc.internal")
+
 
 class VaultSessionCookieTests(unittest.TestCase):
     """The vault session must survive being embedded on another origin."""
@@ -107,6 +125,41 @@ class VaultSessionCookieTests(unittest.TestCase):
         response = client.get("/api/quarantine")
         self.assertEqual(response.status_code, 401)
         self.assertTrue(response.get_json()["auth_required"])
+
+    def test_login_issues_a_reusable_token(self):
+        client = victim_app.test_client()
+        response = client.post("/api/vault/login",
+                               json={"username": VAULT_USER, "pin": VAULT_PIN})
+        self.assertTrue(response.get_json()["ok"])
+        self.assertTrue(response.get_json()["token"])
+
+    def test_token_alone_unlocks_the_vault_without_any_cookie(self):
+        """The case that made the vault render empty behind a proxy: the
+        browser holds no cookie for the origin, so the credential has to
+        travel in a header instead."""
+        issued = victim_app.test_client().post(
+            "/api/vault/login",
+            json={"username": VAULT_USER, "pin": VAULT_PIN},
+        ).get_json()["token"]
+
+        fresh = victim_app.test_client()   # never saw the Set-Cookie
+        response = fresh.get("/api/quarantine",
+                             headers={"X-Vault-Token": issued})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("files", response.get_json())
+        status = fresh.get("/api/vault/status",
+                           headers={"X-Vault-Token": issued}).get_json()
+        self.assertTrue(status["unlocked"])
+        self.assertEqual(status["user"], VAULT_USER)
+
+    def test_tampered_or_absent_token_is_rejected(self):
+        fresh = victim_app.test_client()
+        self.assertEqual(
+            fresh.get("/api/quarantine",
+                      headers={"X-Vault-Token": "not-a-real-token"}).status_code,
+            401,
+        )
+        self.assertEqual(fresh.get("/api/quarantine").status_code, 401)
 
 
 if __name__ == "__main__":

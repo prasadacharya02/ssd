@@ -10,6 +10,7 @@ from pathlib import Path
 from functools import wraps
 from flask import Flask, jsonify, render_template, request, session, send_from_directory
 from flask.sessions import SecureCookieSessionInterface
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -75,18 +76,48 @@ VAULT_USER = getattr(config, "VAULT_USER", "victim_user")
 VAULT_PIN = str(getattr(config, "VAULT_PIN", "1234"))
 VAULT_SESSION_SECONDS = int(getattr(config, "VAULT_SESSION_HOURS", 8)) * 3600
 
+# The vault accepts EITHER the session cookie or a signed bearer token.
+# A cookie is the natural choice on a plain localhost demo, but browsers
+# routinely withhold cookies from an embedded (iframe) view — and block
+# third-party cookies outright in some configurations — which made the vault
+# accept the PIN and then render empty. The token travels in a header, so no
+# cookie policy can affect it.
+VAULT_TOKEN_HEADER = "X-Vault-Token"
+_vault_serializer = URLSafeTimedSerializer(
+    app.secret_key, salt="entropy-vault-session"
+)
+
+
+def _issue_vault_token() -> str:
+    return _vault_serializer.dumps({"user": VAULT_USER})
+
+
+def _vault_token_valid(token: str) -> bool:
+    if not token:
+        return False
+    try:
+        payload = _vault_serializer.loads(token, max_age=VAULT_SESSION_SECONDS)
+    except (BadSignature, SignatureExpired):
+        return False
+    return isinstance(payload, dict) and payload.get("user") == VAULT_USER
+
 
 # ── Vault Auth Helpers ───────────────────────────────────────
 def _vault_unlocked() -> bool:
+    """Unlocked via the session cookie OR the signed bearer token.
+
+    Two independent paths, so the vault works whether or not the browser is
+    willing to hold a cookie for this origin.
+    """
     exp = session.get("vault_expires_at")
-    if not session.get("vault_auth"):
-        return False
-    if not exp or time.time() > float(exp):
+    if session.get("vault_auth"):
+        if exp and time.time() <= float(exp):
+            return True
         session.pop("vault_auth", None)
         session.pop("vault_expires_at", None)
         session.pop("vault_user", None)
-        return False
-    return True
+
+    return _vault_token_valid(request.headers.get(VAULT_TOKEN_HEADER, ""))
 
 
 # ── Folder Helpers ───────────────────────────────────────────
@@ -183,9 +214,10 @@ def health():
 # ── Vault Auth Routes ────────────────────────────────────────
 @app.route("/api/vault/status")
 def vault_status():
+    unlocked = _vault_unlocked()
     return jsonify({
-        "unlocked": _vault_unlocked(),
-        "user": session.get("vault_user"),
+        "unlocked": unlocked,
+        "user": session.get("vault_user") or (VAULT_USER if unlocked else None),
         "privileged": True,
         "scope": "quarantine_only",
     })
@@ -208,6 +240,11 @@ def vault_login():
             "message": "Privileged access granted",
             "user": username,
             "expires_in": VAULT_SESSION_SECONDS,
+            # Cookie-independent credential. The explorer stores this and
+            # sends it in X-Vault-Token, so the vault still works when the
+            # browser withholds the session cookie (embedded/iframe views,
+            # third-party cookie blocking).
+            "token": _issue_vault_token(),
         })
     return jsonify({"ok": False, "error": "invalid_credentials",
                     "message": "Access denied. User only."}), 403
