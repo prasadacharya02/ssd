@@ -8,6 +8,7 @@ const INTERVALS = {
   decision: 6000,
   ledger: 12000,
   entropy: 8000,
+  entropyConfig: 30000,
   processes: 10000,
 };
 
@@ -57,12 +58,42 @@ export function useSocData() {
   const [decision] = usePoll("/api/dqn/last", INTERVALS.decision);
   const [ledger] = usePoll("/api/blockchain/status", INTERVALS.ledger);
   const [entropy] = usePoll("/api/entropy", INTERVALS.entropy);
+  const [entropyConfig] = usePoll("/api/entropy/config", INTERVALS.entropyConfig);
   const [processes] = usePoll("/api/processes", INTERVALS.processes);
   const [pipeline, pipelineDown] = usePoll("/api/pipeline", 5000);
 
   const [events, setEvents] = useState([]);
   const [connected, setConnected] = useState(false);
   const [lastSync, setLastSync] = useState(null);
+
+  /**
+   * The live entropy series the chart draws. Built from ONE merged,
+   * de-duplicated stream (keyed by the event row id):
+   *   1. the /api/entropy poll (backfill + safety net), and
+   *   2. the sub-second `new_event` socket pushes (the live feed).
+   * Every point is a real pipeline detection value — the exact entropy
+   * reading the decision engine acted on. Nothing is synthesized.
+   */
+  const [entropySeries, setEntropySeries] = useState([]);
+
+  const mergeEntropy = (rows) => {
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    setEntropySeries((prev) => {
+      const byId = new Map(prev.map((p) => [p.id, p]));
+      for (const row of rows) {
+        if (row && row.id != null && Number.isFinite(Number(row.entropy))) {
+          byId.set(row.id, row);
+        }
+      }
+      return [...byId.values()].sort((a, b) => a.id - b.id).slice(-90);
+    });
+  };
+
+  // Merge the polled backfill into the series whenever it refreshes.
+  useEffect(() => {
+    mergeEntropy(entropy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entropy]);
 
   // Initial incident feed.
   useEffect(() => {
@@ -92,6 +123,9 @@ export function useSocData() {
         if (prev.some((e) => e.id === row.id)) return prev;
         return [row, ...prev].slice(0, 50);
       });
+      // The same event the detector produced feeds the live graph as
+      // it happens — GRAPH VALUE = ACTUAL DETECTION VALUE.
+      mergeEntropy([row]);
     });
 
     return () => socket.disconnect();
@@ -103,6 +137,8 @@ export function useSocData() {
     decision,
     ledger,
     entropy,
+    entropySeries,
+    entropyConfig,
     processes,
     pipeline,
     pipelineDown,

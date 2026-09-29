@@ -1,5 +1,6 @@
 import Card, { CardLabel } from "./Card.jsx";
-import { cx, formatFloat, formatInt } from "../lib/format.js";
+import EntropyMonitor from "./EntropyMonitor.jsx";
+import { cx, formatInt } from "../lib/format.js";
 
 const THREAT_TONE = {
   MINIMAL: { text: "text-emerald-400", bar: "bg-emerald-400" },
@@ -115,67 +116,17 @@ function ResponseCard({ stats }) {
 }
 
 /**
- * Entropy telemetry strip — last 24 readings, oldest → newest.
- * Bars above the ransomware threshold are flagged, not decorated.
- */
-function EntropyCard({ entropy }) {
-  const points = Array.isArray(entropy)
-    ? entropy.slice(0, 24).reverse()
-    : [];
-  const latest = points.length ? points[points.length - 1] : null;
-  const THRESHOLD = 7.0;
-
-  return (
-    <Card className="md:col-span-2 lg:col-span-7">
-      <div className="flex items-baseline justify-between">
-        <CardLabel>Entropy telemetry</CardLabel>
-        {latest && (
-          <span className="text-[11px] tabular-nums text-slate-500">
-            Latest {formatFloat(latest.entropy)} · Δ {formatFloat(latest.entropy_delta)}
-          </span>
-        )}
-      </div>
-
-      {points.length === 0 ? (
-        <p className="mt-6 text-[13px] text-slate-500">
-          No entropy readings yet. Readings appear as soon as the pipeline
-          observes file activity.
-        </p>
-      ) : (
-        <div className="mt-6 flex h-12 items-end gap-[3px]">
-          {points.map((point, index) => {
-            const value = Number(point.entropy) || 0;
-            const height = Math.max(4, Math.min(48, (value / 8) * 48));
-            const hot = value >= THRESHOLD;
-            return (
-              <span
-                key={index}
-                title={`${point.file_path ?? ""} · ${formatFloat(value)}`}
-                className={cx(
-                  "flex-1 rounded-[1px] transition-all duration-200",
-                  hot ? "bg-red-400/90" : "bg-slate-600",
-                )}
-                style={{ height: `${height}px` }}
-              />
-            );
-          })}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-/**
  * Asymmetric metric band: one dominant threat module on the left,
- * three uneven supporting modules on the right. No 4-up square grid.
+ * three uneven supporting modules on the right, and the full-width
+ * LIVE ENTROPY MONITOR as the attack-story centerpiece below them.
  */
-export default function MetricBoard({ stats, threat, entropy }) {
+export default function MetricBoard({ stats, threat, entropySeries, entropyConfig, connected }) {
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-12 lg:auto-rows-fr">
       <ThreatLevelCard threat={threat} />
       <EventsCard stats={stats} />
       <ResponseCard stats={stats} />
-      <EntropyCard entropy={entropy} />
+      <EntropyMonitor points={entropySeries} config={entropyConfig} connected={connected} />
     </div>
   );
 }

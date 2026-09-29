@@ -152,6 +152,13 @@ def simulate_scenario(scenario, *, baseline: bool, root: Path,
             "entropy_overall": result.get("entropy_overall", 0.0),
             "entropy_delta": result.get("entropy_delta", 0.0),
             "threat_score": result.get("threat_score", 0.0),
+            # Structural ciphertext fingerprints — carried by the live
+            # monitor (EventPipeline._merge_event) and the recovery
+            # drill; the benchmark must see the same evidence or its
+            # decisions diverge from production.
+            "chi2_uniformity": result.get("chi2_uniformity"),
+            "chi2_tail": result.get("chi2_tail"),
+            "magic_ok": result.get("magic_ok", True),
             "events_per_sec": rate,
             "is_suspicious_speed": rate >= config.FILES_PER_SECOND_THRESHOLD,
             "ext_changed": ext_changed,

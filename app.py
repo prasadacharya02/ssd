@@ -218,7 +218,8 @@ def entropy_data():
     try:
         db   = get_db()
         rows = db.execute("""
-            SELECT timestamp, entropy, entropy_delta, file_path
+            SELECT id, timestamp, entropy, entropy_delta, file_path,
+                   action, outcome, process_name, pid
             FROM events
             ORDER BY id DESC
             LIMIT 100
@@ -228,6 +229,49 @@ def entropy_data():
     except Exception:
         log.exception("Entropy API failed")
         return _api_error()
+
+
+@app.route("/api/entropy/config")
+def entropy_config():
+    """The detection thresholds the live entropy chart must draw.
+
+    The dashboard never hard-codes limits: every guide line on the graph
+    comes from this endpoint, which reads the ACTUAL decision-engine
+    configuration (config.py), so chart and detector can never disagree.
+
+    warning  — config.ENTROPY_THRESHOLD: entropy above this feeds the
+               alert-level indicators of the rule engine.
+    critical — 7.0: the structural-ciphertext rules (magic-byte mismatch /
+               chi-squared uniformity) only corroborate quarantine at or
+               above H = 7.0 bits/byte.
+    baseline — mean entropy of IGNORED (normal) events actually observed,
+               i.e. measured "what normal looks like on this machine",
+               None before any normal event exists.
+    """
+    baseline = None
+    try:
+        db  = get_db()
+        row = db.execute(
+            "SELECT AVG(entropy) AS b FROM events WHERE action = 0"
+        ).fetchone()
+        db.close()
+        if row and row["b"] is not None:
+            baseline = round(float(row["b"]), 3)
+    except Exception:
+        log.exception("Entropy config: baseline query failed")
+    return jsonify({
+        "warning_threshold"      : config.ENTROPY_THRESHOLD,
+        "warning_meaning"        : ("ALERT-level indicator threshold "
+                                    "(config.ENTROPY_THRESHOLD)"),
+        "critical_threshold"     : 7.0,
+        "critical_meaning"       : ("H >= 7.0 required by the structural "
+                                    "ciphertext (magic/chi-squared) "
+                                    "quarantine rules"),
+        "delta_threshold"        : config.ENTROPY_DELTA_THRESHOLD,
+        "files_per_second_threshold": config.FILES_PER_SECOND_THRESHOLD,
+        "baseline"               : baseline,
+        "max_bits"               : 8.0,
+    })
 
 
 @app.route("/api/alerts")

@@ -61,6 +61,32 @@ class FixtureGenerationTests(unittest.TestCase):
             self.assertFalse(stale.exists())
             self.assertEqual(len(tree_hashes(root)), 18)
 
+    def test_fixtures_have_valid_magic_for_their_extension(self):
+        """Every fixture whose extension has a known magic signature must
+        carry that magic. A fixture that contradicts its own extension is
+        indistinguishable from ransomware disguise and quarantines itself
+        during every reset (SOC-feed noise)."""
+        from entropy.entropy_calculator import _magic_matches
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "victim"
+            create_all_files(root, clean=True, quiet=True)
+            checked = 0
+            for path in root.rglob("*"):
+                if not path.is_file():
+                    continue
+                data = path.read_bytes()[:16]
+                ok, sig = _magic_matches(data, path.suffix.lower())
+                if path.suffix.lower() in (
+                        ".jpg", ".zip", ".pdf", ".docx", ".xlsx"):
+                    checked += 1
+                    self.assertTrue(
+                        ok,
+                        f"{path.name}: magic 0x{sig} does not match "
+                        f"{path.suffix}",
+                    )
+            self.assertGreaterEqual(checked, 10)
+
 
 if __name__ == "__main__":
     unittest.main()

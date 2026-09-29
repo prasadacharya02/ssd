@@ -22,6 +22,54 @@ def _safe_name(file_path: str) -> str:
     return "".join(c for c in name if c.isalnum() or c in "-_.")[:64] or "unknown"
 
 
+def _ms_between(start, end):
+    """Milliseconds between two ISO-8601 timestamps; None when either
+    endpoint is missing or unparsable (latency is reported honestly,
+    never invented)."""
+    if not start or not end:
+        return None
+    try:
+        delta = (datetime.fromisoformat(str(end))
+                 - datetime.fromisoformat(str(start)))
+    except (ValueError, TypeError):
+        return None
+    return round(delta.total_seconds() * 1000.0, 1)
+
+
+def _build_timeline(raw: dict | None) -> dict:
+    """Assemble the T1..T6 incident timeline + derived latencies.
+
+    T1 = first suspicious file event observed
+    T2 = decision/response started (detection confirmed for this event)
+    T4 = process containment finished (terminate attempted)
+    T5 = quarantine finished
+    T6 = recovery finished
+    Detection latency  = T2 - T1
+    Containment latency = T4 - T2
+    Recovery latency    = T6 - T4
+    """
+    raw = raw or {}
+    t1 = raw.get("t1_event_observed")
+    t2 = raw.get("t2_response_started")
+    t4 = raw.get("t4_process_containment_done")
+    t5 = raw.get("t5_quarantine_done")
+    t6 = raw.get("t6_recovery_done")
+    return {
+        "t1_suspicious_event_observed": t1,
+        "t2_decision_made": t2,
+        "t4_process_contained": t4,
+        "t5_file_quarantined": t5,
+        "t6_recovery_finished": t6,
+        "detection_latency_ms": _ms_between(t1, t2),
+        "containment_latency_ms": _ms_between(t2, t4),
+        "recovery_latency_ms": _ms_between(t4, t6),
+        "note": ("T0 (attack start) and T7 (independent hash "
+                 "verification) are measured externally by "
+                 "verify_demo.py from attacker telemetry and the "
+                 "pre-attack manifest, not self-reported."),
+    }
+
+
 def generate_report(event: dict, decision: dict, response_record: dict,
                     reports_dir: str | None = None) -> str | None:
     """Write a forensic report for one incident.
@@ -113,6 +161,9 @@ def generate_report(event: dict, decision: dict, response_record: dict,
             "blockchain_reference": response_record.get("blockchain_reference"),
             "database_event_id": response_record.get("database_event_id"),
         },
+
+        # ── Incident timeline (T1..T6) + latencies ──────────
+        "timeline": _build_timeline(response_record.get("timing")),
     }
 
     path = os.path.join(

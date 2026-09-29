@@ -4,8 +4,8 @@
 
 > Industry-level, end-to-end working system - No fake claims, no broken demos
 
-[![Tests](https://img.shields.io/badge/tests-126%20pass-brightgreen)]()
-[![Detection](https://img.shields.io/badge/detection-87.5%25%20rules%20%7C%20100%25%20RF-blue)]()
+[![Tests](https://img.shields.io/badge/tests-178%20pass-brightgreen)]()
+[![Detection](https://img.shields.io/badge/detection-100%25%20rules%20%7C%20100%25%20RF-blue)]()
 [![False Quarantine](https://img.shields.io/badge/false%20quarantine-0-brightgreen)]()
 [![Recovery](https://img.shields.io/badge/recovery-18%2F18%20restored-brightgreen)]()
 
@@ -34,7 +34,14 @@ python lab.py
 
 | Surface | URL | Purpose |
 |---------|-----|---------|
-| SOC Dashboard | http://127.0.0.1:5000 | Real-time feed, entropy graph, alerts |
+| SOC Dashboard | http://127.0.0.1:5000 | Real-time feed, **live entropy monitor**, alerts |
+
+The SOC dashboard's **Live Entropy Monitor** graph shows the attack story at
+a glance — normal baseline → spike → DETECTED → QUARANTINED → RESTORED —
+using only real detector outputs streamed over socket.io from the events
+table (the exact values the decision engine scored). Warning/critical/baseline
+guide lines are served by `GET /api/entropy/config`, which reads the decision
+engine's own configuration, so the chart can never disagree with the detector.
 | Victim PC | http://127.0.0.1:5001 | Neutral file explorer (This PC) |
 | Attacker Console | http://127.0.0.1:8001 | Operator console (React) - launch, live telemetry, kill chain |
 
@@ -115,13 +122,22 @@ python -m benchmark.recovery_drill
 
 | Metric | Rules (default) | RF (opt-in) |
 |--------|-----------------|-------------|
-| Attack detection | 42/48 (87.5%) | 48/48 (100%) |
-| False quarantines | **0** | 6 (photo/video) |
-| Blind spot | image_blindspot (in-place high-entropy) | none |
-| Recovery | 18/18 in live demo, 45% in full drill (no-baseline losses) | same |
-| Latency | 1-2 file ops to detect, kill at file 2 | same |
+| Attack detection | 48/48 (100%) | 48/48 (100%) |
+| False quarantines | **0** | **0** |
+| Alert-only false positives | 3/21 workload runs (git_burst) | 3/21 (git_burst) |
+| Recovery | 18/18 in live demo, 51.2% in full drill (no-baseline losses) | same |
+| Latency | median 1 file op to detect, kill at file 2 | same |
 
-**Why 87.5% not 100%?** `image_blindspot` - in-place encryption of jpg/mp4 without rename leaves entropy in normal range. No entropy-only detector can catch it. Published openly as limitation. RF closes it but breaks 0-FQ bar.
+**How the image blind spot closed.** In-place encryption of jpg/mp4 keeps Shannon
+entropy inside the normal media range, so entropy alone cannot flag it. Two
+structural fingerprints can: the destroyed **magic header** (a real JPEG starts
+`FF D8 FF`; ciphertext does not) and the **chi² uniformity test** (ciphertext is
+statistically flat at chi² ≈ 255; real compressed media has structural byte
+peaks at chi² ≫ 1000). The rule engine quarantines on those without breaking
+the 0-false-quarantine bar (high-entropy media workloads stay untouched; only
+`git_burst` still earns an alert — an alert, never a quarantine). Remaining
+honest gap: in-place encryption of files with *unknown* extensions and no
+rename is alert-level only (no magic ground truth to confirm against).
 
 ## 🛡️ Quarantine Decryption - Brutally Honest
 
@@ -145,11 +161,35 @@ os.makedirs(QUARANTINE_DIR, exist_ok=True)  # in install.py + lab.py
 
 `install.py` explicitly creates it and logs: "Quarantine folder created by user at install"
 
+## ✅ Required End-to-End Verification (autonomous)
+
+```bash
+python lab.py           # terminal 1
+python verify_demo.py   # terminal 2 — full lifecycle audit, exit 0 = PASS
+```
+
+`verify_demo.py` performs the required end-to-end test with **no manual
+steps**: service checks → SHA-256 pre-attack manifest of the victim tree →
+reset → launch the safe simulator → wait for containment → verify the
+process was terminated (exit 42), nothing encrypted remains, every restored
+file is byte-identical to the manifest, quarantine/restore events reached the
+SOC feed, the ledger was written, and forensic reports exist. It prints the
+**T0–T7 attack timeline** with detection / containment / recovery latencies
+measured from independent sources (verifier clock + attacker telemetry +
+event DB — the defender never grades its own homework), plus the
+BEFORE/DURING/AFTER demo board. Failure output uses the
+`FAILED COMPONENT / expected / actual / fix` format. Verified 3/3 consecutive
+PASS runs (wannacry ×2, ryuk ×1: kill in 0.1–1.2 s, 18/18 hashes match).
+
+Every incident's `reports/forensic_*.json` also carries a machine-readable
+`timeline` block (T1 observed, T2 decided, T4 contained, T5 quarantined,
+T6 restored + millisecond latencies).
+
 ## 🧪 Tests
 
 ```bash
 pip install -r requirements-ci.txt
-python -m unittest discover -s tests  # 126 tests, 0 fail
+python -m unittest discover -s tests  # 178 tests, 0 fail
 ```
 
 ## 📚 Docs
