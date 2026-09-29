@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>root@fsociety — entropy node</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap");
+  :root {
+    --g: #39ff14;
+    --gd: #1a7a12;
+    --r: #ff003c;
+    --bg: #010300;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--g);
+    font-family: "Share Tech Mono", "Courier New", monospace;
+    overflow: hidden;
+  }
+  body:after {
+    content: "";
+    pointer-events: none;
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0 2px,
+      rgba(0,20,0,.18) 2px 3px
+    );
+    animation: roll 8s linear infinite;
+  }
+  @keyframes roll { to { background-position: 0 100px; } }
+  @keyframes flicker { 0%,19%,21%,23%,100%{opacity:1} 20%,22%{opacity:.55} }
+  .crt { animation: flicker 6s infinite; height: 100%; display: grid; grid-template-rows: auto auto 1fr auto; }
+  header {
+    padding: 10px 16px 8px;
+    border-bottom: 1px solid var(--r);
+    background: #120005;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  header pre {
+    margin: 0; color: var(--r); font-size: 9px; line-height: 1.05; letter-spacing: .5px;
+  }
+  .hello { color: var(--g); font-size: 13px; text-align: right; }
+  .hello b { color: #fff; }
+  .bar {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 6px 16px; border-bottom: 1px solid #133; color: #6f6; font-size: 12px;
+  }
+  a { color: #ffb000; }
+  main { display: grid; grid-template-columns: 280px 1fr; min-height: 0; }
+  .left { overflow: auto; border-right: 1px solid #133; }
+  .left h2 { margin: 12px 14px 6px; font-size: 11px; color: var(--gd); letter-spacing: .2em; }
+  .family {
+    width: 100%; text-align: left; background: transparent; border: 0; border-left: 3px solid transparent;
+    color: #7d7; padding: 10px 14px; font: inherit; cursor: pointer;
+  }
+  .family:hover, .family.active { background: #031a03; color: var(--g); border-left-color: var(--r); }
+  .family small { display: block; color: #385; margin-top: 3px; }
+  .right { display: grid; grid-template-rows: auto 1fr; min-height: 0; padding: 12px; gap: 10px; }
+  .panel { border: 1px solid #133; padding: 12px; background: rgba(0,12,0,.6); }
+  .panel h2 { margin: 0 0 8px; color: var(--r); font-size: 16px; }
+  .meta { color: #6a6; line-height: 1.6; font-size: 12px; }
+  .meta span { color: var(--g); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+  button {
+    background: #050; color: var(--g); border: 1px solid var(--g);
+    font: inherit; padding: 7px 10px; cursor: pointer; text-transform: lowercase;
+  }
+  button:hover { background: #070; }
+  button.kill { background: #300; border-color: var(--r); color: #faa; }
+  button:disabled { opacity: .3; cursor: not-allowed; }
+  #log {
+    background: #000; border: 1px solid #133; overflow: auto; padding: 10px;
+    white-space: pre-wrap; font-size: 12px; line-height: 1.55; min-height: 0;
+  }
+  footer {
+    border-top: 1px solid #133; padding: 6px 16px; color: #364; font-size: 11px;
+    display: flex; justify-content: space-between;
+  }
+  #error { color: var(--r); min-height: 16px; margin-top: 6px; }
+  progress { width: 100%; accent-color: var(--g); height: 8px; }
+</style>
+</head>
+<body>
+<div class="crt">
+  <header>
+    <pre>  ___ ___  ___   ___ ___ ___ _____ _   _
+ | __/ __|/ _ \ / __|_ _| __|_   _/_\ | |
+ | _|\__ \ (_) | (__ | || _|  | |/ _ \| |__
+ |_| |___/\___/ \___|___|___| |_/_/ \_\____|
+        entropy // unauthorized access</pre>
+    <div class="hello">hello, friend.<br><b>we are fs0c13ty.</b><br>lab node :8001</div>
+  </header>
+  <div class="bar">
+    <div>root@fsociety:~# tty=8001</div>
+    <div>target <a id="victim-link" href="#" target="_blank">victim-pc</a> · watch <a id="soc-link" href="#" target="_blank">soc</a></div>
+    <div>files=<b id="file-count">?</b> locked=<b id="locked-count">0</b> engine=<b id="engine-status">IDLE</b></div>
+  </div>
+  <main>
+    <aside class="left">
+      <h2>./payloads</h2>
+      <div id="family-list">enumerating...</div>
+    </aside>
+    <section class="right">
+      <div class="panel">
+        <h2 id="family-name">SELECT PAYLOAD</h2>
+        <div class="meta" id="family-details">choose a family. this is a simulation.</div>
+        <div id="phase">phase=IDLE</div>
+        <progress id="progress" value="0" max="100"></progress>
+        <div class="row">
+          <button id="launch" class="kill" onclick="launchAttack()">./exploit.sh</button>
+          <button id="pause" onclick="togglePause()" disabled>pause</button>
+          <button id="stop" onclick="stopAttack()" disabled>kill -9</button>
+          <button onclick="resetVictim()">restore target</button>
+          <button onclick="downloadLog()">exfil log</button>
+          <label>rate <input id="speed" type="range" min="0.1" max="5" step="0.1" value="1" oninput="changeSpeed(this.value)"> <span id="speed-label">1.0x</span></label>
+        </div>
+        <div id="error"></div>
+        <div class="meta" id="statistics" style="margin-top:8px">hit=0 skipped=0 notes=0</div>
+      </div>
+      <div id="log">waiting for operator_</div>
+    </section>
+  </main>
+  <footer>
+    <span>SAFE LAB · no real encryption · fixtures only</span>
+    <span id="log-count">0 lines</span>
+  </footer>
+</div>
+<script>
+  const CONTROL_TOKEN = "__CONTROL_TOKEN__";
+  const $ = id => document.getElementById(id);
+  const state = { families: [], selected: "wannacry", followLog: true };
+  function authHeaders(json) {
+    const h = json ? { "Content-Type": "application/json" } : {};
+    if (CONTROL_TOKEN && CONTROL_TOKEN.indexOf("__") !== 0) h["Authorization"] = "Bearer " + CONTROL_TOKEN;
+    return h;
+  }
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+  }
+  function setError(m){ $("error").textContent = m || ""; }
+  function formatBytes(v){ v=Number(v||0); if(v<1024) return v+" B"; if(v<1048576) return (v/1024).toFixed(1)+" KB"; return (v/1048576).toFixed(2)+" MB"; }
+  async function loadFamilies(){
+    const r = await fetch("/api/families");
+    state.families = await r.json();
+    if (!state.families.some(i => i.id === state.selected)) state.selected = state.families[0]?.id;
+    renderFamilies(); renderFamilyDetails();
+  }
+  function renderFamilies(){
+    $("family-list").innerHTML = state.families.map((f,i)=>`
+      <button class="family ${f.id===state.selected?"active":""}" onclick="selectFamily('${f.id}')">
+        [${i+1}] ${escapeHtml(f.name)}<small>${escapeHtml(f.extension)} · ${escapeHtml(f.speed)}</small>
+      </button>`).join("");
+  }
+  function selectFamily(id){ state.selected=id; renderFamilies(); renderFamilyDetails(); }
+  function renderFamilyDetails(){
+    const f = state.families.find(i=>i.id===state.selected); if(!f) return;
+    $("family-name").textContent = f.name.toUpperCase();
+    $("family-details").innerHTML = `id=<span>${escapeHtml(f.id)}</span> ext=<span>${escapeHtml(f.extension)}</span> note=<span>${escapeHtml(f.note)}</span>`;
+  }
+  async function launchAttack(){
+    setError("");
+    const r = await fetch("/api/launch",{method:"POST",headers:authHeaders(true),body:JSON.stringify({family:state.selected})});
+    const j = await r.json(); if(!j.ok) setError(j.error||"denied"); await poll();
+  }
+  async function stopAttack(){ await fetch("/api/stop",{method:"POST",headers:authHeaders()}); await poll(); }
+  async function togglePause(){
+    const paused = $("pause").dataset.paused==="true";
+    await fetch(paused?"/api/resume":"/api/pause",{method:"POST",headers:authHeaders()});
+    await poll();
+  }
+  async function changeSpeed(v){
+    $("speed-label").textContent = Number(v).toFixed(1)+"x";
+    await fetch("/api/speed",{method:"POST",headers:authHeaders(true),body:JSON.stringify({factor:Number(v)})});
+  }
+  async function resetVictim(){
+    const r = await fetch("/api/reset",{method:"POST",headers:authHeaders()});
+    const j = await r.json(); if(!j.ok) setError(j.error||"reset failed"); await poll();
+  }
+  function downloadLog(){ window.location.href="/api/log"; }
+  async function poll(){
+    try {
+      const stats = await (await fetch("/api/stats")).json();
+      const victim = stats.victim||{};
+      $("file-count").textContent = victim.exists?victim.total:"missing";
+      $("locked-count").textContent = victim.locked||0;
+      $("engine-status").textContent = stats.active?(stats.paused?"PAUSED":"RUNNING"):(stats.phase||"IDLE");
+      $("launch").disabled = Boolean(stats.active);
+      $("stop").disabled = !stats.active;
+      $("pause").disabled = !stats.active;
+      $("pause").dataset.paused = String(Boolean(stats.paused));
+      $("pause").textContent = stats.paused?"resume":"pause";
+      $("phase").innerHTML = "phase=<span>"+escapeHtml(stats.phase||"IDLE")+"</span>";
+      $("progress").value = stats.progress||0;
+      $("statistics").innerHTML = `hit=<span>${stats.files_hit||0}</span> skipped=<span>${stats.files_skipped||0}</span> notes=<span>${stats.notes_dropped||0}</span> bytes=<span>${formatBytes(stats.bytes_encrypted)}</span> family=<span>${escapeHtml(stats.family||"-")}</span>`;
+      const entries = stats.log||[];
+      $("log-count").textContent = entries.length+" lines";
+      $("log").innerHTML = entries.length ? entries.map(e=>`<span style="color:#385">${escapeHtml(e.time)}</span>  ${escapeHtml(e.msg)}`).join("\n") : "waiting for operator_";
+      if(state.followLog) $("log").scrollTop = $("log").scrollHeight;
+    } catch(e) { setError("node offline"); }
+  }
+  function setupLinks(){
+    const h=location.hostname, p=location.protocol;
+    $("victim-link").href=`${p}//${h}:8002`;
+    $("soc-link").href=`${p}//${h}:5000`;
+  }
+  $("log").addEventListener("scroll",()=>{ const el=$("log"); state.followLog = el.scrollHeight-el.scrollTop-el.clientHeight<16; });
+  setupLinks(); loadFamilies(); poll(); setInterval(poll,700);
+</script>
+</body>
+</html>

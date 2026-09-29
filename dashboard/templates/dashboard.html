@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ENTROPY // SOC</title>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0d1117;
+  --panel: #131820;
+  --panel-2: #1a1f2a;
+  --border: #22293a;
+  --border-hi: #2d3548;
+  --text: #e6edf3;
+  --text-dim: #8b95a5;
+  --text-mute: #4a5262;
+  --accent: #4ade80;
+  --accent-dim: #2a5a3a;
+  --danger: #ef4444;
+  --danger-dim: #7a2020;
+  --warning: #f59e0b;
+  --cyan: #06b6d4;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Doto', 'JetBrains Mono', monospace;
+  font-weight: 500;
+  min-height: 100vh;
+  font-size: 15px;
+  display: flex;
+  letter-spacing: 0.5px;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 240px;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sb-header {
+  padding: 20px 22px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-logo {
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-weight: 900;
+  font-size: 16px;
+  font-family: 'Doto', monospace;
+}
+
+.sb-brand-name {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--text);
+}
+
+.sb-brand-sub {
+  font-size: 12px;
+  color: var(--text-mute);
+  letter-spacing: 2px;
+  margin-top: 3px;
+}
+
+.sb-status {
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+}
+
+.sb-status .dot {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulse 2s infinite;
+}
+
+.sb-status .dot.err {
+  background: var(--danger);
+  box-shadow: 0 0 8px var(--danger);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.sb-section { padding: 20px 0 4px; }
+.sb-section-title {
+  padding: 0 22px 8px;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--text-mute);
+  text-transform: uppercase;
+}
+
+.sb-item {
+  padding: 8px 22px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-left: 2px solid transparent;
+  transition: all 0.1s;
+}
+
+.sb-item:hover { color: var(--text); background: var(--panel); }
+.sb-item.active { color: var(--accent); background: var(--panel); border-left-color: var(--accent); }
+.sb-item .arrow { color: var(--text-mute); font-size: 10px; }
+.sb-item.active .arrow { color: var(--accent); }
+
+/* LIVE BADGE (REPLACES FAKE DEMO BUTTON) */
+.demo-section {
+  padding: 20px 22px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.live-badge {
+  width: 100%;
+  padding: 12px;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: 'Doto', monospace;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-align: center;
+  box-shadow: 0 0 12px rgba(74,222,128,0.2);
+}
+
+.demo-status {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-mute);
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.sb-footer {
+  margin-top: auto;
+  padding: 16px 22px;
+  font-size: 12px;
+  color: var(--text-mute);
+  letter-spacing: 1px;
+}
+
+.sb-footer-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.sb-footer-row .val { color: var(--text-dim); }
+
+/* MAIN */
+.main { flex: 1; padding: 24px 32px; min-width: 0; }
+.topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.topbar-left { display: flex; align-items: center; gap: 12px; font-size: 15px; }
+.tb-path { color: var(--text-dim); }
+.tb-sep { color: var(--text-mute); }
+.tb-current { color: var(--text); }
+.topbar-right { display: flex; align-items: center; gap: 28px; font-size: 14px; letter-spacing: 2px; }
+.tb-info .lbl { color: var(--text-mute); }
+.tb-info .val { color: var(--text); margin-left: 6px; }
+.tb-info .val.accent { color: var(--accent); }
+.tb-info .val.err { color: var(--danger); }
+.tb-info .val.warn { color: var(--warning); }
+
+.page-head { margin-bottom: 20px; }
+.page-title { font-size: 28px; font-weight: 700; color: var(--text); letter-spacing: 2px; font-family: 'Doto', monospace; }
+.page-sub { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+/* THREAT LEVEL */
+.threat-level {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 200px 1fr auto;
+  gap: 24px;
+  align-items: center;
+}
+
+.tl-label { font-size: 14px; letter-spacing: 2px; color: var(--text-dim); }
+.tl-bar { height: 8px; background: var(--panel-2); position: relative; overflow: hidden; }
+.tl-fill { position: absolute; left: 0; top: 0; bottom: 0; transition: width 1s, background 1s; }
+.tl-level { font-size: 18px; font-weight: 700; letter-spacing: 2px; min-width: 130px; text-align: right; font-family: 'Doto', monospace; }
+
+/* METRICS */
+.metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 20px; }
+.metric { background: var(--panel); border: 1px solid var(--border); padding: 18px 20px; }
+.metric-lbl { font-size: 11px; letter-spacing: 2px; color: var(--text-mute); text-transform: uppercase; margin-bottom: 10px; font-family: 'Roboto Mono', monospace; font-weight: 500; }
+.metric-val { font-size: 34px; font-weight: 600; letter-spacing: 1px; line-height: 1; color: var(--text); font-family: 'Roboto Mono', monospace; }
+.metric-val.danger { color: var(--danger); }
+.metric-sub { font-size: 11px; color: var(--text-dim); margin-top: 10px; font-family: 'Roboto Mono', monospace; }
+
+/* PIPELINE STATUS BANNER */
+.pipe-banner { display: flex; align-items: center; gap: 14px; padding: 12px 18px; margin-bottom: 20px; border: 1px solid var(--border); background: var(--panel); font-size: 13px; letter-spacing: 1px; }
+.pipe-banner .pb-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-mute); flex: none; }
+.pipe-banner.ok { border-color: var(--accent-dim); }
+.pipe-banner.ok .pb-dot { background: var(--accent); box-shadow: 0 0 8px rgba(74,222,128,.8); animation: pulse 1.4s infinite; }
+.pipe-banner.warn { border-color: var(--warning); }
+.pipe-banner.warn .pb-dot { background: var(--warning); }
+.pipe-banner.err { border-color: var(--danger); }
+.pipe-banner.err .pb-dot { background: var(--danger); }
+.pipe-banner .pb-title { font-weight: 700; color: var(--text); white-space: nowrap; }
+.pipe-banner .pb-detail { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.pipe-banner .pb-counts { color: var(--text-mute); white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+/* GRIDS */
+.grid-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+
+/* PANEL */
+.panel { background: var(--panel); border: 1px solid var(--border); }
+.panel-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.panel-title { font-size: 14px; letter-spacing: 3px; color: var(--text-dim); text-transform: uppercase; display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.panel-title .arrow { color: var(--accent); font-size: 12px; }
+.panel-meta { font-size: 12px; color: var(--text-mute); letter-spacing: 1px; }
+.panel-meta .em { color: var(--text-dim); }
+.panel-meta .live { color: var(--accent); }
+
+/* EVENT STREAM */
+.event-row { padding: 12px 20px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 140px 70px 1fr 90px; gap: 12px; align-items: center; font-size: 14px; }
+.event-row:hover { background: var(--panel-2); }
+.event-row:last-child { border-bottom: none; }
+.event-row.live { animation: liveflash 1.2s ease-out; }
+@keyframes liveflash {
+  0%   { background: rgba(74, 222, 128, 0.22); }
+  100% { background: transparent; }
+}
+#sys-dot.live { animation: pulse 1s infinite; box-shadow: 0 0 8px rgba(74,222,128,.8); }
+.event-time { color: var(--text-mute); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.event-tag { font-size: 12px; letter-spacing: 1.5px; padding: 3px 6px; border: 1px solid; text-align: center; text-transform: uppercase; font-weight: 700; }
+.event-tag.normal { color: var(--text-dim); border-color: var(--border-hi); }
+.event-tag.med { color: var(--warning); border-color: rgba(245,158,11,0.4); }
+.event-tag.high { color: var(--danger); border-color: var(--danger-dim); }
+.event-desc { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.event-src { color: var(--text-dim); text-align: right; font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+
+/* DQN DECISION */
+.dqn-body { padding: 18px 20px; }
+.dqn-decision { font-size: 18px; font-weight: 700; color: var(--danger); margin-bottom: 6px; letter-spacing: 1.5px; font-family: 'Doto', monospace; }
+.dqn-decision.safe { color: var(--accent); }
+.dqn-decision.warn { color: var(--warning); }
+.dqn-conf { font-size: 13px; color: var(--text-dim); margin-bottom: 16px; }
+.dqn-conf .val { color: var(--accent); font-weight: 700; font-size: 16px; margin-left: 4px; }
+.dqn-reasoning { border-top: 1px dashed var(--border); padding-top: 14px; }
+.dqn-reasoning-title { font-size: 12px; letter-spacing: 2px; color: var(--text-mute); margin-bottom: 10px; text-transform: uppercase; }
+.dqn-factor { display: grid; grid-template-columns: 20px 1fr auto; gap: 10px; padding: 5px 0; font-size: 13px; color: var(--text-dim); align-items: center; }
+.dqn-factor .check { color: var(--accent); font-weight: 700; }
+.dqn-factor .cross { color: var(--text-mute); }
+.dqn-factor .val { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+/* PROCESSES */
+.proc-row { padding: 12px 20px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 60px 1fr 70px 70px; gap: 10px; align-items: center; font-size: 13px; }
+.proc-row:hover { background: var(--panel-2); }
+.proc-row:last-child { border-bottom: none; }
+.proc-pid { color: var(--cyan); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.proc-name { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proc-hits { color: var(--warning); text-align: right; font-family: 'JetBrains Mono', monospace; }
+.proc-status { font-size: 10px; letter-spacing: 1px; padding: 3px 5px; border: 1px solid; text-align: center; text-transform: uppercase; font-weight: 700; }
+.proc-status.killed { color: var(--danger); border-color: var(--danger-dim); }
+.proc-status.watch { color: var(--warning); border-color: rgba(245,158,11,0.3); }
+
+/* BLOCKCHAIN */
+.bc-entry { padding: 12px 20px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 55px 1fr 60px; gap: 12px; align-items: center; font-size: 13px; }
+.bc-entry:hover { background: var(--panel-2); }
+.bc-entry:last-child { border-bottom: none; }
+.bc-id { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; }
+.bc-hash { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.bc-entropy { color: var(--danger); text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+/* QUARANTINE */
+.q-entry { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.q-entry:hover { background: var(--panel-2); }
+.q-entry:last-child { border-bottom: none; }
+.q-name { color: var(--warning); font-weight: 700; margin-bottom: 4px; font-size: 14px; }
+.q-detail { display: grid; grid-template-columns: 80px 1fr; gap: 8px; font-size: 11px; color: var(--text-dim); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+.q-detail .k { color: var(--text-mute); }
+.q-detail .v { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-detail .v.hash { color: var(--accent); }
+.q-detail .v.status-ok { color: var(--accent); }
+
+/* DIST BARS */
+.dist-list { padding: 16px 20px; }
+.dist-item { margin-bottom: 16px; }
+.dist-item:last-child { margin-bottom: 0; }
+.dist-head { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; letter-spacing: 1.5px; }
+.dist-name { display: flex; align-items: center; gap: 8px; color: var(--text-dim); }
+.dist-marker { width: 8px; height: 8px; }
+.dist-marker.ignore { background: var(--text-mute); }
+.dist-marker.alert { background: var(--warning); }
+.dist-marker.terminate { background: var(--danger); opacity: 0.6; }
+.dist-marker.quar { background: var(--danger); }
+.dist-count { color: var(--text); font-family: 'JetBrains Mono', monospace; }
+.dist-bar { height: 3px; background: var(--panel-2); position: relative; overflow: hidden; }
+.dist-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; transition: width 0.5s; }
+.dist-bar-fill.ignore { background: var(--text-mute); }
+.dist-bar-fill.alert { background: var(--warning); }
+.dist-bar-fill.terminate { background: var(--danger); opacity: 0.6; }
+.dist-bar-fill.quar { background: var(--danger); }
+
+.empty { padding: 30px 20px; text-align: center; color: var(--text-mute); font-size: 13px; letter-spacing: 2px; }
+.chart-wrap { padding: 20px; height: 240px; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+
+  <div class="sb-header">
+    <div class="sb-logo">EN</div>
+    <div>
+      <div class="sb-brand-name">ENTROPY</div>
+      <div class="sb-brand-sub">SOC V1.0</div>
+    </div>
+  </div>
+
+  <div class="sb-status">
+    <span class="dot" id="sys-dot"></span>
+    <span>SYSTEM &middot; <span id="sys-state">OPERATIONAL</span></span>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">CONSOLE</div>
+    <div class="sb-item active"><span class="arrow">▸</span><span>Overview</span></div>
+    <div class="sb-item"><span class="arrow">▸</span><span>Entropy Monitor</span></div>
+    <div class="sb-item"><span class="arrow">▸</span><span>Threat Log</span></div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">SECURITY</div>
+    <div class="sb-item"><span class="arrow">▸</span><span>Blockchain</span></div>
+    <div class="sb-item"><span class="arrow">▸</span><span>Quarantine</span></div>
+    <div class="sb-item"><span class="arrow">▸</span><span>Processes</span></div>
+  </div>
+
+  <!-- REAL-TIME INTERCEPTION BADGE (NO FAKE BUTTON) -->
+  <div class="demo-section">
+    <div class="live-badge">● ACTIVE INTERCEPTION</div>
+    <div class="demo-status" id="demo-status">LISTENING FOR ATTACKS</div>
+  </div>
+
+  <div class="sb-footer">
+    <div class="sb-footer-row"><span>VERSION</span><span class="val">1.0.0</span></div>
+    <div class="sb-footer-row"><span>NODE</span><span class="val">LOCAL-01</span></div>
+    <div class="sb-footer-row"><span>UPTIME</span><span class="val" id="sb-uptime">00:00:00</span></div>
+  </div>
+
+</aside>
+
+<main class="main">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="tb-path">/entropy</span>
+      <span class="tb-sep">/</span>
+      <span class="tb-current">overview</span>
+    </div>
+    <div class="topbar-right">
+      <span class="tb-info"><span class="lbl">MODE:</span><span class="val accent" id="mode-val">MONITORING</span></span>
+      <span class="tb-info"><span class="lbl">CHAIN:</span><span class="val" id="chain-val">-- TX</span></span>
+      <span class="tb-info"><span class="lbl">TIME:</span><span class="val" id="tb-time">--:--:--</span></span>
+    </div>
+  </div>
+
+  <div class="page-head">
+    <div class="page-title">security_overview</div>
+    <div class="page-sub">Real-time telemetry from ransomware defense layers</div>
+  </div>
+
+  <!-- DETECTION PIPELINE STATUS (is the monitor really running, and
+       is it watching the victim folder?) -->
+  <div class="pipe-banner" id="pipe-banner">
+    <span class="pb-dot"></span>
+    <span class="pb-title" id="pb-title">CHECKING DETECTION PIPELINE…</span>
+    <span class="pb-detail" id="pb-detail"></span>
+    <span class="pb-counts" id="pb-counts"></span>
+  </div>
+
+  <!-- THREAT LEVEL BAR -->
+  <div class="threat-level">
+    <div class="tl-label">THREAT LEVEL</div>
+    <div class="tl-bar"><div class="tl-fill" id="tl-fill" style="width:5%; background:var(--accent)"></div></div>
+    <div class="tl-level" id="tl-level" style="color:var(--accent)">MINIMAL</div>
+  </div>
+
+  <!-- METRICS -->
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-lbl">EVENTS · 24H</div>
+      <div class="metric-val" id="m-events">0000</div>
+      <div class="metric-sub">total tracked</div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">CHAIN · TX</div>
+      <div class="metric-val" id="m-chain">0000</div>
+      <div class="metric-sub">confirmed on-chain</div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">VAULT · QNT</div>
+      <div class="metric-val" id="m-vault">0000</div>
+      <div class="metric-sub">quarantined files</div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">THREATS · DET</div>
+      <div class="metric-val danger" id="m-threats">0000</div>
+      <div class="metric-sub">blocked / logged</div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">RECOVERY · RST</div>
+      <div class="metric-val" id="m-recovery">0000</div>
+      <div class="metric-sub">restored from clean backup</div>
+    </div>
+  </div>
+
+  <!-- EVENT STREAM + DQN DECISION -->
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="arrow">▸</span>EVENT STREAM</div>
+        <div class="panel-meta">last 10 <span class="em">·</span> <span class="live">tail -f</span></div>
+      </div>
+      <div id="event-stream"><div class="empty">AWAITING EVENTS</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="arrow">▸</span>AI DECISION ENGINE</div>
+        <div class="panel-meta live">▮ LIVE</div>
+      </div>
+      <div class="dqn-body">
+        <div class="dqn-decision safe" id="dqn-decision">STANDBY</div>
+        <div class="dqn-conf">CONFIDENCE:<span class="val" id="dqn-conf">--</span></div>
+        <div class="dqn-reasoning">
+          <div class="dqn-reasoning-title">DECISION FACTORS</div>
+          <div id="dqn-factors">
+            <div class="dqn-factor">
+              <span class="cross">·</span>
+              <span>Awaiting event analysis</span>
+              <span class="val">--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENTROPY CHART + THREAT DIST -->
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="arrow">▸</span>ENTROPY TIMESERIES</div>
+        <div class="panel-meta">
+          <span style="color:var(--accent)">━</span> ENTROPY
+          <span style="margin-left:12px; color:var(--warning)">┅</span> DELTA
+          <span style="margin-left:12px; color:var(--danger)">┅</span> THR 7.5
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="chart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="arrow">▸</span>THREAT DISTRIBUTION</div>
+        <div class="panel-meta">action classes</div>
+      </div>
+      <div class="dist-list">
+        <div class="dist-item">
+          <div class="dist-head">
+            <span class="dist-name"><span class="dist-marker ignore"></span>IGNORE</span>
+            <span class="dist-count" id="dist-ignore">000</span>
+          </div>
+          <div class="dist-bar"><div class="dist-bar-fill ignore" id="bar-ignore" style="width:0%"></div></div>
+        </div>
+        <div class="dist-item">
+          <div class="dist-head">
+            <span class="dist-name"><span class="dist-marker alert"></span>ALERT</span>
+            <span class="dist-count" id="dist-alert">000</span>
+          </div>
+          <div class="dist-bar"><div class="dist-bar-fill alert" id="bar-alert" style="width:0%"></div></div>
+        </div>
+        <div class="dist-item">
+          <div class="dist-head">
+            <span class="dist-name"><span class="dist-marker terminate"></span>TERMINATE</span>
+            <span class="dist-count" id="dist-terminate">000</span>
+          </div>
+          <div class="dist-bar"><div class="dist-bar-fill terminate" id="bar-terminate" style="width:0%"></div></div>
+        </div>
+        <div class="dist-item">
+          <div class="dist-head">
+            <span class="dist-name"><span class="dist-marker quar"></span>QUARANTINE</span>
+            <span class="dist-count" id="dist-quarantine">000</span>
+          </div>
+          <div class="dist-bar"><div class="dist-bar-fill quar" id="bar-quarantine" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROCESSES + BLOCKCHAIN + QUARANTINE -->
+  <div class="grid-3">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="arrow">▸</span>PROCESS MONITOR</div>
+        <div class="panel-meta" id="proc-count">0</div>
+      </div>
+      <div id="proc-list"><div class="empty">NO FLAGGED PROCS</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="arrow">▸</span>BLOCKCHAIN LEDGER</div>
+        <div class="panel-meta" id="bc-count">0 tx</div>
+      </div>
+      <div id="bc-list"><div class="empty">NO TRANSACTIONS</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="arrow">▸</span>QUARANTINE VAULT</div>
+        <div class="panel-meta" id="q-count">0 files</div>
+      </div>
+      <div id="q-list"><div class="empty">VAULT EMPTY</div></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Served locally: the dashboard must work offline / behind a firewall.
+     (/socket.io/socket.io.js is NOT served by python-socketio 5.x — it
+     returned HTTP 400, so `io` was undefined and the live feed died.) -->
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/socket.io.min.js') }}"></script>
+<script>
+const START_TIME = Date.now();
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function pad(n, len=4) { return String(n).padStart(len, '0'); }
+function ts(s) { return (s || '').toString().replace('T', ' ').slice(0, 19); }
+function tsTime(s) { return (s || '').toString().slice(11, 19); }
+function fname(p) { return (p || '').split(/[\\/]/).pop() || '--'; }
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+function actionTag(a) {
+  const map = { 0: ['NORMAL','normal'], 1: ['MED','med'], 2: ['HIGH','high'], 3: ['HIGH','high'] };
+  const [lbl, cls] = map[a] || ['LOW','normal'];
+  return `<span class="event-tag ${cls}">${lbl}</span>`;
+}
+
+function eventDesc(e) {
+  const name = fname(e.file_path);
+  const ent = (e.entropy || 0).toFixed(2);
+  let base;
+  if (e.action >= 3) base = `THREAT: ${name} → E=${ent}`;
+  else if (e.action >= 2) base = `KILL: ${name} → E=${ent}`;
+  else if (e.action >= 1) base = `ALERT: ${name} → E=${ent}`;
+  else base = `${e.event_type || 'EVT'}: ${name}`;
+  // Show what the defense actually did (KILL, QUARANTINE, RESTORE…).
+  if (e.outcome && e.action >= 2) base += ` → ${e.outcome}`;
+  return base;
+}
+
+let chart = null;
+function initChart() {
+  if (typeof Chart === 'undefined') {
+    // Never let a missing chart library stop the live feed.
+    console.warn('Chart.js unavailable — entropy graph disabled');
+    return;
+  }
+  const ctx = document.getElementById('chart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        { label: 'ENTROPY', data: [], borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.06)', borderWidth: 1.5, tension: 0.3, pointRadius: 0, fill: true },
+        { label: 'DELTA', data: [], borderColor: '#f59e0b', borderWidth: 1, tension: 0.3, borderDash: [3,3], pointRadius: 0, fill: false },
+        { label: 'THR', data: [], borderColor: 'rgba(239,68,68,0.6)', borderWidth: 1, borderDash: [5,3], pointRadius: 0, fill: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      scales: {
+        x: { ticks: { color: '#4a5262', font: { size: 11 }, maxTicksLimit: 10 }, grid: { color: '#1a1f2a' } },
+        y: { min: 0, max: 8, ticks: { color: '#4a5262', font: { size: 11 }, stepSize: 2 }, grid: { color: '#1a1f2a' } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+setInterval(() => {
+  const now = new Date();
+  document.getElementById('tb-time').textContent = now.toLocaleTimeString('en-US', { hour12: false });
+  const up = Math.floor((Date.now() - START_TIME) / 1000);
+  document.getElementById('sb-uptime').textContent =
+    String(Math.floor(up/3600)).padStart(2,'0') + ':' +
+    String(Math.floor((up%3600)/60)).padStart(2,'0') + ':' +
+    String(up%60).padStart(2,'0');
+}, 1000);
+
+async function loadStats() {
+  try {
+    const r = await fetch('/api/stats');
+    const d = await r.json();
+    const total = d.total || 0;
+    const threats = d.threats || 0;
+    const bcTx = d.blockchain_tx || 0;
+    const quar = d.quarantined || 0;
+    const recovery = d.recovery || 0;
+
+    document.getElementById('m-events').textContent = pad(total);
+    document.getElementById('m-chain').textContent = pad(bcTx);
+    document.getElementById('m-vault').textContent = pad(quar);
+    document.getElementById('m-threats').textContent = pad(threats);
+    document.getElementById('m-recovery').textContent = pad(recovery);
+    document.getElementById('chain-val').textContent = bcTx + ' TX';
+
+    const level = total === 0 ? 0 : Math.min(100, Math.round((threats / total) * 150));
+    const fill = document.getElementById('tl-fill');
+    const lbl = document.getElementById('tl-level');
+    fill.style.width = Math.max(5, level) + '%';
+
+    if (level < 20) {
+      fill.style.background = 'var(--accent)';
+      lbl.textContent = 'MINIMAL'; lbl.style.color = 'var(--accent)';
+    } else if (level < 50) {
+      fill.style.background = 'var(--warning)';
+      lbl.textContent = 'ELEVATED'; lbl.style.color = 'var(--warning)';
+    } else if (level < 80) {
+      fill.style.background = 'var(--danger)';
+      lbl.textContent = 'HIGH'; lbl.style.color = 'var(--danger)';
+    } else {
+      fill.style.background = 'var(--danger)';
+      lbl.textContent = 'CRITICAL'; lbl.style.color = 'var(--danger)';
+    }
+
+    const dot = document.getElementById('sys-dot');
+    const state = document.getElementById('sys-state');
+    const mode = document.getElementById('mode-val');
+    const statusText = document.getElementById('demo-status');
+
+    if (threats > 0) {
+      dot.classList.add('err');
+      state.textContent = 'ENGAGED'; state.style.color = 'var(--danger)';
+      mode.textContent = 'ACTIVE THREAT'; mode.className = 'val err';
+      if (statusText) statusText.textContent = 'ATTACK NEUTRALIZED';
+    } else {
+      dot.classList.remove('err');
+      state.textContent = 'OPERATIONAL'; state.style.color = '';
+      mode.textContent = 'MONITORING'; mode.className = 'val accent';
+      if (statusText) statusText.textContent = 'LISTENING FOR ATTACKS';
+    }
+  } catch(e) {}
+}
+
+async function loadEvents() {
+  try {
+    const r = await fetch('/api/events');
+    const data = await r.json();
+    const el = document.getElementById('event-stream');
+    if (!data.length) { el.innerHTML = '<div class="empty">AWAITING EVENTS</div>'; return; }
+    el.innerHTML = data.slice(0, 10).map(e => `
+      <div class="event-row">
+        <div class="event-time">${ts(e.timestamp)}</div>
+        <div>${actionTag(e.action)}</div>
+        <div class="event-desc">${escapeHtml(eventDesc(e))}</div>
+        <div class="event-src">${escapeHtml(e.pid ? 'PID:' + e.pid : '127.0.0.1')}</div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+async function loadDQN() {
+  try {
+    const r = await fetch('/api/dqn/last');
+    const d = await r.json();
+    if (!d || !d.decision) return;
+
+    const dec = document.getElementById('dqn-decision');
+    const conf = document.getElementById('dqn-conf');
+    const fac = document.getElementById('dqn-factors');
+
+    dec.textContent = d.decision;
+    dec.className = 'dqn-decision ' + (d.decision.includes('IGNORE') ? 'safe' : d.decision.includes('ALERT') ? 'warn' : '');
+    conf.textContent = d.confidence + '%';
+
+    fac.innerHTML = d.factors.map(f => `
+      <div class="dqn-factor">
+        <span class="${f.pass ? 'check' : 'cross'}">${f.pass ? '✓' : '·'}</span>
+        <span>${escapeHtml(f.name)}</span>
+        <span class="val">${escapeHtml(f.value)}</span>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+async function loadProcesses() {
+  try {
+    const r = await fetch('/api/processes');
+    const data = await r.json();
+    const el = document.getElementById('proc-list');
+    document.getElementById('proc-count').textContent = data.length;
+    if (!data.length) { el.innerHTML = '<div class="empty">NO FLAGGED PROCS</div>'; return; }
+    el.innerHTML = data.slice(0, 8).map(p => `
+      <div class="proc-row">
+        <div class="proc-pid">${p.pid || '--'}</div>
+        <div class="proc-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name || 'unknown')}</div>
+        <div class="proc-hits">${p.hits}x</div>
+        <div class="proc-status ${p.status}">${p.status.toUpperCase()}</div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+async function loadDistribution() {
+  try {
+    const r = await fetch('/api/events');
+    const data = await r.json();
+    if (!data.length) return;
+    let counts = { 0:0, 1:0, 2:0, 3:0 };
+    data.forEach(e => { counts[e.action || 0]++; });
+    const total = data.length;
+    const setBar = (id, count) => {
+      document.getElementById('dist-'+id).textContent = pad(count, 3);
+      document.getElementById('bar-'+id).style.width = (total>0?(count/total)*100:0) + '%';
+    };
+    setBar('ignore', counts[0]);
+    setBar('alert', counts[1]);
+    setBar('terminate', counts[2]);
+    setBar('quarantine', counts[3]);
+  } catch(e) {}
+}
+
+async function loadBlockchain() {
+  try {
+    const r = await fetch('/api/blockchain');
+    const data = await r.json();
+    const el = document.getElementById('bc-list');
+    document.getElementById('bc-count').textContent = data.length + ' tx';
+    if (!data.length) { el.innerHTML = '<div class="empty">NO TRANSACTIONS</div>'; return; }
+    el.innerHTML = [...data].reverse().slice(0, 8).map(e => `
+      <div class="bc-entry">
+        <div class="bc-id">#${pad(e.id, 3)}</div>
+        <div class="bc-hash">${escapeHtml((e.fingerprint || '').slice(0, 20))}...</div>
+        <div class="bc-entropy">E:${(e.entropy || 0).toFixed(2)}</div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+async function loadQuarantine() {
+  try {
+    const r = await fetch('/api/quarantine');
+    const data = await r.json();
+    const el = document.getElementById('q-list');
+    document.getElementById('q-count').textContent = data.length + ' files';
+    if (!data.length) { el.innerHTML = '<div class="empty">VAULT EMPTY</div>'; return; }
+    el.innerHTML = data.slice(0, 5).map(f => {
+      const parts = f.name.split('_');
+      const hash = parts[0] || '';
+      const name = parts.slice(1).join('_') || f.name;
+      return `
+        <div class="q-entry">
+          <div class="q-name">${escapeHtml(name)}</div>
+          <div class="q-detail"><span class="k">SHA-256:</span><span class="v hash">${hash}...</span></div>
+          <div class="q-detail"><span class="k">SIZE:</span><span class="v">${fmtSize(f.size)}</span></div>
+          <div class="q-detail"><span class="k">STATUS:</span><span class="v status-ok">ISOLATED</span></div>
+        </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function loadChart() {
+  if (!chart) return;
+  try {
+    const r = await fetch('/api/entropy');
+    const data = await r.json();
+    const rev = [...data].reverse().slice(-60);
+    chart.data.labels = rev.map(d => tsTime(d.timestamp));
+    chart.data.datasets[0].data = rev.map(d => d.entropy || 0);
+    chart.data.datasets[1].data = rev.map(d => Math.abs(d.entropy_delta || 0));
+    chart.data.datasets[2].data = rev.map(() => 7.5);
+    chart.update('none');
+  } catch(e) {}
+}
+
+function renderPipeline(p) {
+  const banner = document.getElementById('pipe-banner');
+  const title = document.getElementById('pb-title');
+  const detail = document.getElementById('pb-detail');
+  const counts = document.getElementById('pb-counts');
+  if (!banner || !p) return;
+  const folders = (p.watch_folders || []).join(', ');
+  if (!p.online) {
+    banner.className = 'pipe-banner err';
+    title.textContent = 'DETECTION PIPELINE OFFLINE';
+    detail.textContent = p.age_seconds == null
+      ? 'No monitor has reported yet — start the lab with: python lab.py'
+      : `Last heartbeat ${p.age_seconds}s ago — the monitor process stopped. Restart: python lab.py`;
+    counts.textContent = '';
+    return;
+  }
+  const s = p.stats || {};
+  counts.textContent = `SEEN ${s.received || 0} · ANALYZED ${s.analyzed || 0} · ENGINE ${(p.engine || 'rules').toUpperCase()}`;
+  if (!p.watching_victim) {
+    banner.className = 'pipe-banner warn';
+    title.textContent = 'NOT WATCHING VICTIM FOLDER';
+    detail.textContent = `Monitoring ${folders || '(nothing)'} — victim files at ${p.victim_folder} are NOT watched. Check ENTROPY_WATCH_FOLDERS.`;
+    return;
+  }
+  banner.className = p.dry_run ? 'pipe-banner warn' : 'pipe-banner ok';
+  title.textContent = p.dry_run ? 'MONITORING · DRY-RUN' : 'MONITORING LIVE';
+  detail.textContent = (p.dry_run
+    ? 'Detections are logged but files are NOT quarantined (ENTROPY_DRY_RUN=true). Watching: '
+    : 'Watching: ') + folders;
+}
+
+async function loadPipeline() {
+  try {
+    const r = await fetch('/api/pipeline');
+    renderPipeline(await r.json());
+  } catch(e) {
+    renderPipeline({ online: false, age_seconds: null });
+  }
+}
+
+async function loadAll() {
+  await Promise.all([
+    loadPipeline(),
+    loadStats(),
+    loadEvents(),
+    loadDQN(),
+    loadProcesses(),
+    loadDistribution(),
+    loadBlockchain(),
+    loadQuarantine(),
+    loadChart()
+  ]);
+}
+
+initChart();
+loadAll();
+setInterval(loadStats, 1000);
+setInterval(loadAll, 2000);
+
+// ────────────────────────────────────────────────────────────
+// REAL-TIME CHANNEL
+// The pipeline persists every file/detection event to the shared
+// database; the dashboard backend pushes each new row here over
+// socket.io as soon as it lands. We stream them into the event
+// feed, entropy graph, and threat state the moment they happen —
+// the polling loops above are just a resilience fallback.
+// ────────────────────────────────────────────────────────────
+// If the socket.io client failed to load, the 1–2s polling above
+// still keeps every panel live — never throw here.
+const socket = (typeof io === 'function')
+  ? io({ transports: ['websocket', 'polling'] })
+  : { on() {} };
+
+function eventRowHtml(e, live) {
+  return `<div class="event-row${live ? ' live' : ''}">
+    <div class="event-time">${ts(e.timestamp)}</div>
+    <div>${actionTag(e.action)}</div>
+    <div class="event-desc">${escapeHtml(eventDesc(e))}</div>
+    <div class="event-src">${escapeHtml(e.pid ? 'PID:' + e.pid : '127.0.0.1')}</div>
+  </div>`;
+}
+
+function pushEventRow(e) {
+  const el = document.getElementById('event-stream');
+  if (!el) return;
+  if (el.querySelector('.empty')) el.innerHTML = '';
+  el.insertAdjacentHTML('afterbegin', eventRowHtml(e, true));
+  // Keep the live feed bounded (the 2s poll re-syncs the full list).
+  while (el.children.length > 30) el.removeChild(el.lastChild);
+}
+
+function pushChartPoint(d) {
+  if (!chart) return;
+  chart.data.labels.push(tsTime(d.timestamp));
+  chart.data.datasets[0].data.push(d.entropy || 0);
+  chart.data.datasets[1].data.push(Math.abs(d.entropy_delta || 0));
+  chart.data.datasets[2].data.push(7.5);
+  while (chart.data.labels.length > 60) {
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(ds => ds.data.shift());
+  }
+  chart.update('none');
+}
+
+socket.on('connect', () => {
+  const dot = document.getElementById('sys-dot');
+  if (dot) dot.classList.add('live');
+});
+
+socket.on('new_event', (e) => {
+  pushEventRow(e);
+  if (e.entropy != null) pushChartPoint(e);
+  if (e.action >= 1) {
+    // Threat surfaced — refresh counters/threat state immediately.
+    loadStats();
+    loadProcesses();
+  }
+});
+
+socket.on('live_update', (d) => {
+  // Counter heartbeat; full stat refresh is cheap and keeps all
+  // panels (metrics, distribution, threat level) in lock-step.
+  loadStats();
+  if (d && d.pipeline) renderPipeline(d.pipeline);
+});
+</script>
+</body>
+</html>

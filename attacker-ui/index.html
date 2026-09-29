@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="robots" content="noindex" />
+    <title>Entropy · Attacker Operator Console</title>
+    <!-- No external font/CDN requests: the lab must run air-gapped. -->
+    <link rel="icon" href="data:," />
+    <style>
+      html {
+        background: #0b0f19;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      Runtime values are injected by the Python service
+      (attacker_server/app.py) when it serves this file, exactly like the
+      legacy single-file console. The placeholders below are replaced with
+      the live links and the operator control token for this lab instance.
+    -->
+    <script>
+      window.__ENTROPY_CONSOLE__ = {
+        token: "__CONTROL_TOKEN__",
+        victimUrl: "__VICTIM_URL__",
+        dashboardUrl: "__DASHBOARD_URL__",
+        attackerUrl: "__ATTACKER_URL__",
+      };
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

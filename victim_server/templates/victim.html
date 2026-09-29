@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>This PC — VICTIM-PC</title>
+  <style>
+    :root {
+      --bg: #f3f3f3; --panel: #ffffff; --border: #e5e5e5; --text: #1a1a1a;
+      --muted: #6b6b6b; --blue: #0078d4; --blue-soft: #e8f3ff;
+      --green: #107c10; --orange: #ff8c00; --red: #d13438; --sidebar: #fafafa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Segoe UI", system-ui, sans-serif; background: #1b3a5f; color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 18px; }
+    .window { width: min(1180px, 100%); height: min(720px, 92vh); background: var(--panel); border-radius: 10px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35); display: flex; flex-direction: column; border: 1px solid #d0d0d0; }
+    .titlebar { height: 36px; background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 10px 0 14px; user-select: none; }
+    .title-left { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .app-icon { width: 16px; height: 16px; border-radius: 3px; background: linear-gradient(135deg, #60a5fa, #2563eb); }
+    .win-btns { display: flex; gap: 2px; }
+    .win-btns span { width: 46px; height: 28px; display: grid; place-items: center; color: #333; font-size: 11px; border-radius: 4px; }
+    .win-btns span:hover { background: #eee; }
+    .win-btns .x:hover { background: #e81123; color: #fff; }
+    .chrome { background: #f8f8f8; border-bottom: 1px solid var(--border); }
+    .tabs { display: flex; gap: 2px; padding: 6px 8px 0; }
+    .tab { background: #fff; border: 1px solid var(--border); border-bottom: none; border-radius: 8px 8px 0 0; padding: 7px 14px; font-size: 12px; color: #333; }
+    .toolbar { display: flex; gap: 6px; align-items: center; padding: 8px 12px; flex-wrap: wrap; background: #fff; border-top: 1px solid var(--border); }
+    .tool { border: none; background: transparent; padding: 6px 10px; border-radius: 6px; font-size: 12px; color: #333; cursor: pointer; }
+    .tool:hover { background: #f0f0f0; }
+    .tool.disabled { color: #aaa; cursor: default; }
+    .tool.lock-btn { color: #c45c00; font-weight: 600; }
+    .pathbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: #fff; border-bottom: 1px solid var(--border); }
+    .navbtn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid transparent; background: #fff; cursor: pointer; }
+    .navbtn:hover { background: #f3f3f3; border-color: #ddd; }
+    .breadcrumb { flex: 1; height: 32px; border: 1px solid #d0d0d0; border-radius: 6px; display: flex; align-items: center; padding: 0 12px; font-size: 13px; background: #fff; gap: 8px; }
+    .search { width: 220px; height: 32px; border: 1px solid #d0d0d0; border-radius: 6px; padding: 0 12px; font-size: 13px; outline: none; }
+    .body { flex: 1; display: grid; grid-template-columns: 220px 1fr; min-height: 0; background: #fff; }
+    .sidebar { background: var(--sidebar); border-right: 1px solid var(--border); padding: 10px 8px; overflow: auto; }
+    .side-label { font-size: 11px; color: var(--muted); padding: 8px 10px 4px; text-transform: uppercase; letter-spacing: .04em; }
+    .side-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; color: #222; }
+    .side-item:hover { background: #efefef; }
+    .side-item.active { background: var(--blue-soft); color: #0b5cab; font-weight: 600; }
+    .side-item .ico { width: 18px; text-align: center; }
+    .side-item.quarantine { color: #c45c00; }
+    .side-item.quarantine.active { background: #fff3e6; color: #9a3b00; }
+    .side-item .lock-tag { font-size: 10px; margin-left: auto; padding: 1px 6px; border-radius: 3px; background: #f0f0f0; color: #666; }
+    .main { display: flex; flex-direction: column; min-width: 0; }
+    .status-strip { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--muted); background: #fcfcfc; }
+    .badge { font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid transparent; }
+    .badge.ok { color: var(--green); background: #e8f5e9; border-color: #c8e6c9; }
+    .badge.warn { color: #9a5b00; background: #fff4e5; border-color: #ffe0b2; }
+    .badge.danger { color: #fff; background: var(--red); border-color: var(--red); }
+    .badge.protected { color: #0b5cab; background: #e8f3ff; border-color: #b3d7f5; }
+    .content { flex: 1; overflow: auto; padding: 18px; background: #fff; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+    .card { border: 1px solid transparent; border-radius: 10px; padding: 14px 10px 12px; cursor: pointer; text-align: center; transition: .15s ease; background: #fff; position: relative; }
+    .card:hover { background: #f5f9ff; border-color: #cfe4ff; }
+    .card .folder-ico { font-size: 42px; line-height: 1; margin-bottom: 8px; }
+    .card .name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .card .meta { font-size: 11px; color: var(--muted); }
+    .card.compromised .meta { color: var(--red); font-weight: 600; }
+    .card.quarantine .name { color: #c45c00; }
+    .card.locked .folder-ico::after { content: "🔒"; position: absolute; font-size: 20px; margin-left: -12px; margin-top: 12px; }
+    .file-table { width: 100%; border-collapse: collapse; }
+    .file-table th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .file-table td { padding: 10px; border-bottom: 1px solid #f0f0f0; font-size: 13px; vertical-align: middle; }
+    .file-table tr:hover td { background: #f7fbff; cursor: pointer; }
+    .file-name { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+    .f-ico { width: 28px; height: 28px; border-radius: 6px; display: grid; place-items: center; font-size: 14px; background: #f3f3f3; }
+    .f-ico.locked { background: #ffe8e8; }
+    .f-ico.q { background: #fff1e0; }
+    .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+    .pill.enc { background: #fde7e9; color: #a4262c; }
+    .pill.q { background: #fff1e0; color: #c45c00; }
+    .pill.ok { background: #e8f5e9; color: #0b6a0b; }
+    .empty { text-align: center; color: var(--muted); padding: 60px 20px; font-size: 14px; line-height: 1.6; }
+    .empty .big-ico { font-size: 48px; margin-bottom: 10px; }
+    .empty b { color: #333; font-size: 16px; }
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+    .modal-bg.show { display: flex; }
+    .modal { width: min(720px, 100%); max-height: 80vh; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,.3); display: flex; flex-direction: column; }
+    .modal-h { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); font-weight: 600; }
+    .modal-b { padding: 16px; overflow: auto; font-family: Consolas, monospace; font-size: 12px; white-space: pre-wrap; background: #fafafa; color: #222; line-height: 1.45; }
+    .close-btn { border: none; background: #f0f0f0; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; }
+    .taskbar { height: 40px; background: #2b2b2b; color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 13px; }
+    .win-logo { width: 18px; height: 18px; background: #00a4ef; border-radius: 3px; }
+    .stats-mini { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; }
+    .stats-mini b { color: #222; }
+    /* Vault Login */
+    .vault-modal { width: min(420px, 100%); }
+    .vault-body { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .vault-body .lock-icon { text-align: center; font-size: 42px; }
+    .vault-body h3 { text-align: center; font-size: 16px; color: #333; }
+    .vault-body p { text-align: center; font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .vault-body label { font-size: 12px; font-weight: 600; color: #555; margin-top: 4px; }
+    .vault-body input { height: 36px; padding: 0 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; outline: none; }
+    .vault-body input:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(0,120,212,.15); }
+    .vault-body button { height: 38px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: var(--blue); color: #fff; }
+    .btn-primary:hover { background: #005a9e; }
+    .btn-secondary { background: #f0f0f0; color: #333; border: 1px solid #ddd !important; }
+    .vault-err { color: var(--red); font-size: 12px; min-height: 16px; text-align: center; font-weight: 600; }
+    /* Quarantine vault view */
+    .q-banner { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; padding: 12px 14px; margin-bottom: 12px; border: 1px solid #cfe6cf; background: #f3faf3; border-radius: 8px; font-size: 13px; color: #1d4d1d; }
+    .q-banner b { font-size: 15px; }
+    .q-banner .q-path { color: #5b6b5b; font-family: Consolas, monospace; font-size: 12px; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; letter-spacing: .3px; white-space: nowrap; }
+    .pill.killed { background: #fde7e9; color: #a4262c; }
+    .pill.contained { background: #e6f4ea; color: #0b6a0b; }
+    .pill.ro { background: #eef1f5; color: #4a5568; }
+    .q-sub { color: var(--muted); font-size: 11px; font-family: Consolas, monospace; }
+  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='explorer.css') }}" />
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">
+      <div class="title-left">
+        <div class="app-icon"></div>
+        <span>entropy<span style="color:#7c9177">.</span></span><span class="brand-sub">PERSONAL WORKSPACE</span>
+      </div>
+      <div class="device"><span class="device-dot"></span>VICTIM-PC<span class="avatar">VU</span></div>
+    </div>
+
+    <div class="chrome">
+      <div class="tabs"><div class="tab">File Explorer</div></div>
+      <div class="toolbar">
+        <button class="tool" onclick="refreshAll()" title="Refresh files">↻ Refresh</button>
+        <button class="tool lock-btn" id="vaultBtn" onclick="handleVaultBtn()">🔐 Vault Login</button>
+      </div>
+      <div class="pathbar">
+        <button class="navbtn" onclick="showHome()" title="Up">↑</button>
+        <div class="breadcrumb">
+          <span>📁</span>
+          <span id="pathText">This PC</span>
+        </div>
+        <input class="search" id="searchBox" placeholder="Search This PC" oninput="filterFiles()" />
+      </div>
+    </div>
+
+    <div class="body">
+      <aside class="sidebar">
+        <div class="side-label">WORKSPACE</div>
+        <div class="side-item active" id="navThisPC" onclick="showHome()"><span class="ico">💻</span>This PC</div>
+        <div class="side-item" data-goto="Desktop" onclick="openFolder('Desktop')"><span class="ico">🖥️</span>Desktop</div>
+        <div class="side-item" data-goto="Documents" onclick="openFolder('Documents')"><span class="ico">📁</span>Documents</div>
+        <div class="side-item" data-goto="Downloads" onclick="openFolder('Downloads')"><span class="ico">📁</span>Downloads</div>
+        <div class="side-item" data-goto="Pictures" onclick="openFolder('Pictures')"><span class="ico">📁</span>Pictures</div>
+        <div class="side-item quarantine" data-goto="Quarantine" onclick="openFolder('Quarantine')">
+          <span class="ico">🛡️</span>Quarantine Vault
+          <span class="lock-tag" id="vaultTag">🔒</span>
+        </div>
+        <div class="side-item" onclick="showHome()"><span class="ico">💾</span>Local Disk (C:)</div>
+        <div class="sidebar-note"><b>Your files. Your space.</b><br/>Read-only endpoint explorer<br/>Local workspace · 5001</div>
+      </aside>
+
+      <section class="main">
+        <!-- Neutral status bar, like a real explorer: item counts only.
+             Attack assessment is not part of the file explorer — that
+             is the SOC dashboard's job. -->
+        <div class="status-strip">
+          <div class="stats-mini" id="summaryText">Loading…</div>
+          <div class="badge protected">Read-only workspace</div>
+        </div>
+        <div class="content" id="content"></div>
+      </section>
+    </div>
+
+    <div class="taskbar">
+      <div class="win-logo"></div>
+      <span>ENTROPY WORKSPACE <span style="margin-left:15px">Local files · Read-only access</span></span>
+      <span id="liveClock" style="opacity:.8;margin-left:8px;"></span>
+    </div>
+  </div>
+
+  <!-- File Preview Modal -->
+  <div class="modal-bg" id="modalBg" onclick="closeModal(event)">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" onclick="event.stopPropagation()">
+      <div class="modal-h">
+        <span id="modalTitle">Preview</span>
+        <button class="close-btn" aria-label="Close dialog" onclick="hideModal()">✕</button>
+      </div>
+      <div class="modal-b" id="modalBody">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Vault Login Modal -->
+  <div class="modal-bg" id="vaultLoginBg">
+    <div class="modal vault-modal" role="dialog" aria-modal="true" aria-label="Quarantine vault access" onclick="event.stopPropagation()">
+      <div class="modal-h">
+        <span>🔐 Privileged User Access</span>
+        <button class="close-btn" aria-label="Close dialog" onclick="hideVaultLogin()">✕</button>
+      </div>
+      <div class="vault-body">
+        <div class="lock-icon">🛡️</div>
+        <h3>Quarantine Vault Access</h3>
+        <p>This vault is restricted to the authorized endpoint user only.<br/>
+           Ransomware processes cannot access isolated files.</p>
+
+        <label for="vaultUser">Username</label>
+        <input id="vaultUser" value="victim_user" autocomplete="off" />
+
+        <label for="vaultPin">PIN / Password</label>
+        <input id="vaultPin" type="password" inputmode="numeric" placeholder="Enter vault PIN"
+               autocomplete="off" onkeydown="if(event.key==='Enter') vaultLogin()" />
+
+        <div id="vaultErr" class="vault-err" role="alert"></div>
+        <button class="btn-primary" onclick="vaultLogin()">Unlock Quarantine Vault</button>
+        <button class="btn-secondary" onclick="hideVaultLogin()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const FOLDER_ICONS = {
+    Documents: "📁", Downloads: "📁", Desktop: "🖥️",
+    Pictures: "🖼️", Quarantine: "🛡️", "Local Disk (C:)": "💾",
+  };
+
+  let currentFolder = null;
+  let folderCache = [];
+  let fileCache = [];
+  let statusCache = {};
+  let vaultUnlocked = false;
+
+  function setActiveNav(folder) {
+    document.querySelectorAll(".side-item").forEach(el => el.classList.remove("active"));
+    if (!folder) { document.getElementById("navThisPC")?.classList.add("active"); return; }
+    document.querySelectorAll(`.side-item[data-goto="${folder}"]`).forEach(el => el.classList.add("active"));
+  }
+
+  async function fetchJSON(url) {
+    const res = await fetch(url);
+    if (!res.ok && res.status !== 401) throw new Error(url + " failed");
+    return res.json();
+  }
+
+  async function checkVault() {
+    try {
+      const s = await fetchJSON("/api/vault/status");
+      vaultUnlocked = !!s.unlocked;
+      updateVaultUI();
+    } catch { vaultUnlocked = false; updateVaultUI(); }
+    return vaultUnlocked;
+  }
+
+  function updateVaultUI() {
+    const btn = document.getElementById("vaultBtn");
+    const tag = document.getElementById("vaultTag");
+    if (vaultUnlocked) {
+      btn.textContent = "🔓 Lock Vault";
+      btn.style.color = "#107c10";
+      tag.textContent = "🔓";
+      tag.style.background = "#e8f5e9";
+      tag.style.color = "#0b6a0b";
+    } else {
+      btn.textContent = "🔐 Vault Login";
+      btn.style.color = "#c45c00";
+      tag.textContent = "🔒";
+      tag.style.background = "#f0f0f0";
+      tag.style.color = "#666";
+    }
+  }
+
+  function handleVaultBtn() {
+    if (vaultUnlocked) vaultLogout();
+    else showVaultLogin();
+  }
+
+  // Neutral explorer status bar — item counts only, exactly like the
+  // Windows File Explorer status bar. No attack intelligence here.
+  function setNeutralStatus(text) {
+    const el = document.getElementById("summaryText");
+    if (el) el.textContent = text || "";
+  }
+
+  async function refreshStatus() {
+    await checkVault();
+    if (currentFolder) {
+      setNeutralStatus(`${fileCache.length} item${fileCache.length === 1 ? "" : "s"}`);
+    } else {
+      const total = folderCache.filter(f => f.name !== "Quarantine").reduce((a, f) => a + (f.file_count || 0), 0);
+      setNeutralStatus(`${total} files`);
+    }
+  }
+
+  async function showHome(preserveSearch = false) {
+    currentFolder = null;
+    setActiveNav(null);
+    document.getElementById("pathText").textContent = "This PC";
+
+    if (!preserveSearch) document.getElementById("searchBox").value = "";
+
+    try { folderCache = await fetchJSON("/api/folders"); }
+    catch { folderCache = []; }
+
+    const totalFiles = folderCache.filter(f => f.name !== "Quarantine").reduce((a, f) => a + (f.file_count || 0), 0);
+
+    // A plain "This PC" view: folders with item counts + the disk.
+    // No attack status, no "encrypted" markers.
+    const cards = [
+      ...folderCache.map(f => ({
+        name: f.name, count: f.file_count, size: f.size,
+        locked: f.locked, isFolder: true,
+      })),
+      { name: "Local Disk (C:)", count: totalFiles, size: "", locked: false, isFolder: false }
+    ];
+
+    const query = document.getElementById("searchBox").value.toLowerCase();
+    const html = heading("This PC", "A little more organized. Everything in its place.") + `<div class="section-heading">Your folders <span>Browse your local workspace</span></div><div class="grid">${cards.filter(c => c.name.toLowerCase().includes(query)).map(c => {
+      const isQ = c.name === "Quarantine";
+      const isLocked = c.locked;
+      let meta;
+      if (isQ && isLocked) meta = `🔒 Locked`;
+      else if (isQ) meta = `${c.count || 0} items`;
+      else meta = `${c.count || 0} items`;
+
+      const cls = ["card", isQ ? "quarantine" : "", isLocked ? "locked" : ""].join(" ");
+      const click = c.name === "Local Disk (C:)" ? "showHome()" : `openFolder('${c.name}')`;
+
+      return `<div class="${cls}" role="button" tabindex="0" onkeydown="if(event.key==='Enter' || event.key===' '){event.preventDefault();this.click()}" onclick="${click}"><span class="arrow">↗</span>
+                <div class="folder-ico">${FOLDER_ICONS[c.name] || "📁"}</div>
+                <div class="name">${c.name}</div>
+                <div class="meta">${meta}${c.size && !isQ ? " · " + c.size : ""}</div>
+              </div>`;
+    }).join("")}</div><div class="workspace-note"><span>▣</span><div><b>A dedicated space for your files</b>Browse folders and preview files without making changes. Your quarantine vault stays locked until you unlock it.</div></div>`;
+    document.getElementById("content").innerHTML = html;
+    setNeutralStatus(`${totalFiles} files`);
+  }
+
+  async function openFolder(name, preserveSearch = false) {
+    currentFolder = name;
+    setActiveNav(name);
+    document.getElementById("pathText").textContent = `This PC \\ ${name}`;
+
+    if (!preserveSearch) document.getElementById("searchBox").value = "";
+
+    if (name === "Quarantine" && !vaultUnlocked) {
+      await checkVault();
+      if (!vaultUnlocked) {
+        document.getElementById("content").innerHTML = `
+          <div class="empty">
+            <div class="big-ico">🔐</div>
+            <b>Privileged Access Required</b><br/><br/>
+            Quarantine Vault contains isolated malicious files.<br/>
+            Only the authorized user can access this vault.<br/><br/>
+            <button class="btn-primary" style="padding:10px 18px;border:none;border-radius:8px;background:#0078d4;color:#fff;font-weight:600;cursor:pointer;" onclick="showVaultLogin()">
+              🔓 Authenticate to Unlock
+            </button>
+          </div>`;
+        return;
+      }
+    }
+
+    try {
+      const res = await fetch("/api/files/" + encodeURIComponent(name));
+      if (res.status === 401) {
+        showVaultLogin();
+        return;
+      }
+      fileCache = await res.json();
+      if (!Array.isArray(fileCache)) fileCache = fileCache.files || [];
+    } catch { fileCache = []; }
+
+    filterFiles();
+    await refreshStatus();
+  }
+
+  // Icon from the extension only — a real explorer never reveals
+  // whether a file is "encrypted"; it just shows a file icon.
+  function fileIcon(file) {
+    const ext = (file.extension || "").toLowerCase();
+    if ([".jpg",".jpeg",".png",".gif",".bmp"].includes(ext)) return "🖼️";
+    if ([".doc",".docx"].includes(ext)) return "📄";
+    if ([".xls",".xlsx",".csv"].includes(ext)) return "📊";
+    if (ext === ".pdf") return "📕";
+    if ([".zip",".rar",".7z"].includes(ext)) return "🗜️";
+    if ([".txt",".log"].includes(ext)) return "📝";
+    if ([".exe",".msi"].includes(ext)) return "⚙️";
+    return "📄";
+  }
+
+  function renderQuarantine(files) {
+    const killed = {};
+    files.forEach(f => { if (f.process_killed && f.killed_pid) killed[f.killed_pid] = f.killed_name; });
+    const killedTxt = Object.keys(killed).length
+      ? Object.entries(killed).map(([pid, n]) => `PID ${pid} (${escapeHtml(n || "?")})`).join(", ")
+      : "none recorded";
+    const rows = files.map(f => `
+      <tr onclick="previewFile('Quarantine', \`${f.name.replace(/`/g, "")}\`)">
+        <td><div class="file-name">
+          <div class="f-ico">🦠</div>
+          <div>${escapeHtml(f.original_name)}<div class="q-sub">${escapeHtml(f.name)}</div></div>
+        </div></td>
+        <td>${escapeHtml(f.from_folder || "-")}</td>
+        <td>${escapeHtml(f.quarantined_at || f.modified || "-")}</td>
+        <td>${f.process_killed
+              ? `<span class="pill killed">KILLED PID ${f.killed_pid}</span>`
+              : `<span class="pill contained">CONTAINED</span>`}
+            ${f.read_only ? '<span class="pill ro">READ-ONLY</span>' : ""}</td>
+        <td>${f.size || "-"}</td>
+      </tr>`).join("");
+    document.getElementById("content").innerHTML = `
+      <div class="q-banner">
+        <b>🛡️ ${files.length} file${files.length === 1 ? "" : "s"} quarantined</b>
+        <span>Ransomware process killed: <b>${killedTxt}</b></span>
+        <span class="q-path">Clean copies were restored to their original folders.</span>
+      </div>
+      <table class="file-table">
+        <thead><tr>
+          <th style="width:38%">Original file</th><th style="width:14%">From</th>
+          <th style="width:18%">Quarantined</th><th style="width:20%">Response</th>
+          <th style="width:10%">Size</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  function heading(title, subtitle) {
+    return `<div class="page-heading"><div><div class="eyebrow">YOUR WORKSPACE</div><h1>${escapeHtml(title)}</h1><p>${escapeHtml(subtitle)}</p></div><span class="view-label">▦ &nbsp; File explorer</span></div>`;
+  }
+  function renderFiles(files) {
+    renderFileContent(files);
+    document.getElementById("content").insertAdjacentHTML("afterbegin", heading(currentFolder, "Browse your files. Select a file to preview its contents."));
+  }
+  function renderFileContent(files) {
+    if (currentFolder === "Quarantine" && files.length) { renderQuarantine(files); return; }
+    if (!files.length) {
+      document.getElementById("content").innerHTML = `
+        <div class="empty">
+          ${currentFolder === "Quarantine"
+            ? '<div class="big-ico">🛡️</div><b>Quarantine Vault is empty</b><br/>Blocked ransomware files will appear here after defense intercepts an attack.'
+            : (document.getElementById("searchBox").value ? "No files match your search." : "This folder is empty.")}
+        </div>`;
+      return;
+    }
+
+    // Plain explorer columns — Name / Date modified / Type / Size.
+    // No status pills, no family labels, no note markers.
+    const rows = files.map(f => {
+      return `<tr onclick="previewFile('${currentFolder}', \`${f.name.replace(/`/g, "")}\`)">
+                <td><div class="file-name">
+                  <div class="f-ico">${fileIcon(f)}</div>
+                  <div>${escapeHtml(f.name)}</div>
+                </div></td>
+                <td>${f.modified || "-"}</td>
+                <td>${f.extension || "File"}</td>
+                <td>${f.size || "-"}</td>
+              </tr>`;
+    }).join("");
+
+    document.getElementById("content").innerHTML = `
+      <table class="file-table">
+        <thead><tr>
+          <th style="width:50%">Name</th><th style="width:20%">Date modified</th>
+          <th style="width:15%">Type</th><th style="width:15%">Size</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  function filterFiles() {
+    if (currentFolder == null) { showHome(true); return; }
+    const q = (document.getElementById("searchBox").value || "").toLowerCase();
+    const filtered = fileCache.filter(f => ((f.name || "") + " " + (f.original_name || "")).toLowerCase().includes(q));
+    renderFiles(filtered);
+  }
+
+  async function previewFile(folder, filename) {
+    document.getElementById("modalTitle").textContent = filename;
+    document.getElementById("modalBody").textContent = "Loading…";
+    document.getElementById("modalBg").classList.add("show");
+    try {
+      const res = await fetch(`/api/file/${encodeURIComponent(folder)}/${encodeURIComponent(filename)}`);
+      if (res.status === 401) {
+        hideModal();
+        showVaultLogin();
+        return;
+      }
+      const data = await res.json();
+      if (data.error) document.getElementById("modalBody").textContent = data.error;
+      else document.getElementById("modalBody").textContent = (data.content || "") + (data.truncated ? "\n\n… [truncated]" : "");
+    } catch { document.getElementById("modalBody").textContent = "Unable to preview file."; }
+  }
+
+  function hideModal() { document.getElementById("modalBg").classList.remove("show"); }
+  function closeModal(e) { if (e.target.id === "modalBg") hideModal(); }
+  function escapeHtml(s) { return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;"); }
+
+  // Vault Login
+  function showVaultLogin() {
+    document.getElementById("vaultErr").textContent = "";
+    document.getElementById("vaultPin").value = "";
+    document.getElementById("vaultLoginBg").classList.add("show");
+    setTimeout(() => document.getElementById("vaultPin").focus(), 100);
+  }
+  function hideVaultLogin() { document.getElementById("vaultLoginBg").classList.remove("show"); }
+
+  async function vaultLogin() {
+    const username = document.getElementById("vaultUser").value.trim();
+    const pin = document.getElementById("vaultPin").value.trim();
+    const errEl = document.getElementById("vaultErr");
+    errEl.textContent = "";
+    if (!pin) { errEl.textContent = "PIN required."; return; }
+
+    try {
+      const res = await fetch("/api/vault/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ username, pin })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        vaultUnlocked = true;
+        updateVaultUI();
+        hideVaultLogin();
+        // Unlocking the vault always opens it.
+        await openFolder("Quarantine");
+      } else {
+        errEl.textContent = "Wrong PIN — access denied.";
+        const pinEl = document.getElementById("vaultPin");
+        pinEl.value = ""; pinEl.focus();
+      }
+    } catch { errEl.textContent = "Login failed. Try again."; }
+  }
+
+  async function vaultLogout() {
+    await fetch("/api/vault/logout", { method: "POST" });
+    vaultUnlocked = false;
+    updateVaultUI();
+    if (currentFolder === "Quarantine") showHome();
+    else await refreshStatus();
+  }
+
+  async function refreshAll() {
+    if (currentFolder) await openFolder(currentFolder);
+    else await showHome();
+  }
+
+  function tickClock() {
+    const d = new Date();
+    document.getElementById("liveClock").textContent = d.toLocaleTimeString();
+  }
+
+  document.querySelectorAll('.side-item').forEach(el => {
+    el.setAttribute('role', 'button'); el.tabIndex = 0;
+    el.setAttribute('aria-label', el.textContent.trim());
+    [...el.childNodes].filter(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim()).forEach(n => {
+      const span = document.createElement('span'); span.className = 'side-text'; n.replaceWith(span); span.appendChild(n);
+    });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } });
+  });
+  document.getElementById('searchBox').setAttribute('aria-label', 'Search current folder');
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { hideModal(); hideVaultLogin(); } });
+  // Boot
+  (async () => {
+    await checkVault();
+    await showHome();
+  })();
+  tickClock();
+  setInterval(tickClock, 1000);
+  setInterval(refreshStatus, 3000);
+  setInterval(() => {
+    // Don't re-render (or re-open the login prompt) under an open dialog.
+    if (document.querySelector(".modal-bg.show")) return;
+    if (currentFolder) openFolder(currentFolder, true);
+    else showHome(true);
+  }, 3000);
+</script>
+</body>
+</html>

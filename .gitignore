@@ -1,0 +1,68 @@
+# Python bytecode and tooling
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+py-env/
+.runenv/
+
+# Repo-local pip install targets (bootstrap cache, not source)
+_deps/
+_pylibs/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# IDE / OS files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime state
+*.db
+*.db-shm
+*.db-wal
+attacker_control.json
+logs/
+quarantine_storage/
+backup_storage/
+reports/
+benchmark/results/
+
+# Generated lab and ML artifacts
+victim_server/user_files/
+data/testing/
+data/training/*.json
+ai/*.pth
+ai/*.pt
+
+# Build and package output
+build/
+dist/
+*.egg-info/
+
+# Agent session scratch (memory, not repo content)
+.arena/
+
+# SOC dashboard build tooling
+soc-ui/node_modules/
+
+# Victim frontend tooling
+victim-ui/node_modules/
+
+# Attacker console tooling
+attacker-ui/node_modules/

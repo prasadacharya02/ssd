@@ -1,0 +1,23 @@
+# ENTROPY - Final Year Major Project - Production Dependencies
+# Verified compatible set (numpy 1.26.4 + torch 2.2.1 + sklearn 1.4.2 + shap 0.44.0)
+# Tested on Python 3.11 - installs without ResolutionImpossible
+
+# Core monitoring
+watchdog==4.0.1
+psutil==5.9.8
+
+# Crypto & ML - compatible versions
+numpy==1.26.4
+scikit-learn==1.4.2
+shap==0.44.0
+torch==2.2.1
+
+# Web & Blockchain
+flask==3.0.2
+flask-socketio==5.3.6
+python-dotenv==1.0.1
+web3==6.15.1
+eventlet==0.35.2
+
+# UI
+colorama==0.4.6

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ENTROPY — Command Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #07080a;
+  --ink: #101217;
+  --panel: #14171d;
+  --line: #262b36;
+  --text: #e8e4d9;
+  --mute: #8a8478;
+  --copper: #c9844a;
+  --teal: #6ee7c5;
+  --alert: #e35d5d;
+  --warn: #e3b341;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--void); color: var(--text); }
+body {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  display: grid;
+  grid-template-columns: 88px 1fr 340px;
+  min-height: 100vh;
+}
+button { font: inherit; cursor: pointer; }
+.rail {
+  border-right: 1px solid var(--line);
+  background: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 0 24px;
+  gap: 8px;
+}
+.mark { width: 46px; height: 46px; object-fit: cover; border-radius: 10px; }
+.navbtn {
+  width: 52px; height: 52px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--mute);
+  border-radius: 12px;
+}
+.navbtn.active, .navbtn:hover { color: var(--teal); border-color: var(--line); background: #1b1f28; }
+.stage { overflow: auto; position: relative; }
+.hero {
+  height: 280px;
+  background: linear-gradient(180deg, rgba(7,8,10,.15), var(--void) 92%), url("/static/hero.jpg") center/cover;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 28px 36px 22px;
+}
+.kicker { color: var(--copper); font-size: 11px; letter-spacing: .28em; text-transform: uppercase; }
+h1 {
+  font-family: Syne, sans-serif;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin: 8px 0 10px;
+}
+.lede {
+  font-family: Newsreader, serif;
+  font-size: 20px;
+  max-width: 640px;
+  color: #d7d1c4;
+}
+.bar {
+  display: flex; gap: 18px; flex-wrap: wrap;
+  padding: 14px 36px;
+  border-bottom: 1px solid var(--line);
+  color: var(--mute);
+}
+.bar b { color: var(--text); font-weight: 500; }
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr .9fr;
+  gap: 16px;
+  padding: 20px 36px 40px;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+.card h2 {
+  font-family: Syne, sans-serif;
+  font-size: 15px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 12px;
+}
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.metric { background: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.metric span { color: var(--mute); font-size: 10px; letter-spacing: .16em; }
+.metric strong { display: block; font-size: 26px; font-family: Syne, sans-serif; margin-top: 6px; }
+.metric strong.hot { color: var(--alert); }
+.stream { max-height: 280px; overflow: auto; }
+.row {
+  display: grid;
+  grid-template-columns: 86px 1fr auto;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #1e232d;
+  color: var(--mute);
+}
+.row em { font-style: normal; color: var(--text); }
+.chip { font-size: 10px; letter-spacing: .12em; border: 1px solid var(--line); padding: 2px 6px; border-radius: 99px; }
+.chip.a1 { color: var(--warn); border-color: #5a4a20; }
+.chip.a2, .chip.a3 { color: var(--alert); border-color: #5a2020; }
+.inspector {
+  border-left: 1px solid var(--line);
+  background: var(--ink);
+  padding: 20px 18px;
+  overflow: auto;
+}
+.inspector h3 { font-family: Syne, sans-serif; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; margin: 18px 0 10px; color: var(--mute); }
+.family {
+  width: 100%;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.family:hover { border-color: var(--copper); }
+.family small { display: block; color: var(--mute); margin-top: 3px; }
+.actions { display: flex; gap: 8px; margin: 12px 0 4px; }
+.actions button {
+  flex: 1;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #1b1f28;
+  color: var(--text);
+  padding: 10px;
+}
+.actions button.primary { background: var(--copper); color: #140d07; border-color: var(--copper); font-weight: 600; }
+.note { color: var(--mute); font-size: 11px; line-height: 1.45; margin-top: 10px; }
+.view { display: none; }
+.view.on { display: block; }
+.banner {
+  margin: 16px 36px 0;
+  border: 1px solid #3a2a16;
+  background: #16110c;
+  color: #e8c9a4;
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+@media (max-width: 1100px) {
+  body { grid-template-columns: 1fr; }
+  .rail, .inspector { display: none; }
+}
+</style>
+</head>
+<body>
+<nav class="rail">
+  <img class="mark" src="/static/mark.png" alt="ENTROPY mark">
+  <button class="navbtn active" data-view="ops" title="Operations">OPS</button>
+  <button class="navbtn" data-view="range" title="Purple range">RNG</button>
+  <button class="navbtn" data-view="ledger" title="Ledger">LDG</button>
+</nav>
+<main class="stage">
+  <header class="hero">
+    <div class="kicker">Command platform · dry-run by default</div>
+    <h1>ENTROPY</h1>
+    <p class="lede">Catch encryption in motion — Shannon fingerprints, corroborating behavior, and an auditable ledger. Built for purple-team ranges, not campus demos.</p>
+  </header>
+  <div class="banner" id="positioning"></div>
+  <div class="bar">
+    <span>LEDGER <b id="mode">—</b></span>
+    <span>DRY-RUN <b id="dry">—</b></span>
+    <span>ENGINE <b id="engine">—</b></span>
+    <span>THREAT <b id="tl">—</b></span>
+  </div>
+
+  <section class="view on" id="view-ops">
+    <div class="grid">
+      <div>
+        <div class="metrics">
+          <div class="metric"><span>EVENTS</span><strong id="m-total">0</strong></div>
+          <div class="metric"><span>ALERTS</span><strong class="hot" id="m-threats">0</strong></div>
+          <div class="metric"><span>QUARANTINE</span><strong id="m-q">0</strong></div>
+          <div class="metric"><span>LEDGER TX</span><strong id="m-tx">0</strong></div>
+        </div>
+        <div class="card">
+          <h2>Live event fabric</h2>
+          <div class="stream" id="events"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Last decision</h2>
+        <div id="decision" style="font-family:Syne,sans-serif;font-size:28px;margin-bottom:8px;">STANDBY</div>
+        <div class="note" id="explain">Waiting for fixture activity. Launch a family from the range rail.</div>
+        <div id="factors"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-range">
+    <div class="grid">
+      <div class="card">
+        <h2>Contained victim estate</h2>
+        <p class="note" id="victim">Loading fixture inventory…</p>
+        <div class="stream" id="folders"></div>
+      </div>
+      <div class="card">
+        <h2>Campaign telemetry</h2>
+        <pre id="camp" style="white-space:pre-wrap;color:#c9c3b6;line-height:1.5"></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-ledger">
+    <div class="grid" style="grid-template-columns:1fr">
+      <div class="card">
+        <h2>Immutable intent vs local fallback</h2>
+        <p class="note" id="ledger-note"></p>
+        <div class="stream" id="ledger"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<aside class="inspector">
+  <div class="kicker">Purple range</div>
+  <h3>Family catalog</h3>
+  <div id="families"></div>
+  <div class="actions">
+    <button class="primary" id="btn-stop">Stop</button>
+    <button id="btn-reset">Reset estate</button>
+  </div>
+  <p class="note">Simulations overwrite only <code>victim_server/user_files</code>. Terminate/quarantine stay simulated unless you disable dry-run. This is a training range, not endpoint protection.</p>
+</aside>
+<script>
+const $ = (id) => document.getElementById(id);
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));}
+document.querySelectorAll('.navbtn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
+    $('view-' + btn.dataset.view).classList.add('on');
+  };
+});
+async function j(url, opt){ const r = await fetch(url, opt); return r.json(); }
+async function refresh(){
+  const [plat, stats, events, dqn, chain, lab, folders, ledger, threat] = await Promise.all([
+    j('/api/platform'), j('/api/stats'), j('/api/events'), j('/api/dqn/last'),
+    j('/api/blockchain/status'), j('/api/lab/status'), j('/api/folders').catch(()=>[]),
+    j('/api/blockchain'), j('/api/threat-level')
+  ]);
+  $('positioning').textContent = plat.positioning + ' · edition ' + plat.edition;
+  $('mode').textContent = (chain.mode || 'none').toUpperCase();
+  $('dry').textContent = plat.dry_run ? 'ON' : 'OFF';
+  $('engine').textContent = (dqn.engine || 'rules').toUpperCase();
+  $('tl').textContent = threat.label || 'MINIMAL';
+  $('m-total').textContent = stats.total || 0;
+  $('m-threats').textContent = stats.threats || 0;
+  $('m-q').textContent = stats.quarantined || 0;
+  $('m-tx').textContent = stats.blockchain_tx || 0;
+  $('decision').textContent = dqn.decision || 'STANDBY';
+  $('explain').textContent = dqn.explanation || 'No persisted decision yet.';
+  $('factors').innerHTML = (dqn.factors||[]).map(f =>
+    `<div class="row"><span>${esc(f.name)}</span><em>${esc(f.value)}</em><span>${f.pass?'●':''}</span></div>`).join('');
+  const list = Array.isArray(events) ? events.slice(0,12) : [];
+  $('events').innerHTML = list.length ? list.map(e =>
+    `<div class="row"><span>${esc((e.timestamp||'').slice(11,19))}</span><em>${esc((e.file_path||'').split(/[\\\\/]/).pop())}</em><span class="chip a${e.action||0}">A${e.action||0}</span></div>`
+  ).join('') : '<div class="note">Quiet. The fabric is listening.</div>';
+  const v = lab.victim || {};
+  $('victim').textContent = v.exists ? `${v.total} fixtures · ${v.locked} locked · ${v.notes} notes` : 'No fixture tree. Reset the estate.';
+  $('camp').textContent = JSON.stringify({active: lab.active, family: lab.family, phase: lab.phase, progress: lab.progress, dry_run: lab.dry_run}, null, 2);
+  $('ledger-note').textContent = chain.mode_label || '';
+  const tx = Array.isArray(ledger) ? ledger.slice(-12).reverse() : [];
+  $('ledger').innerHTML = tx.map(t =>
+    `<div class="row"><span>#${esc(t.id)}</span><em>${esc((t.fingerprint||'').slice(0,18))}</em><span>${esc(t.status||'')}</span></div>`
+  ).join('') || '<div class="note">Ledger empty.</div>';
+}
+async function loadFamilies(){
+  const fams = await j('/api/lab/families');
+  $('families').innerHTML = fams.map(f =>
+    `<button class="family" data-id="${esc(f.id)}"><strong>${esc(f.name)}</strong><small>${esc(f.extension)} · ${esc(f.style)}</small></button>`
+  ).join('');
+  $('families').onclick = async (ev) => {
+    const btn = ev.target.closest('.family');
+    if (!btn) return;
+    await j('/api/lab/launch', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({family: btn.dataset.id})});
+    refresh();
+  };
+}
+$('btn-stop').onclick = async () => { await j('/api/lab/stop', {method:'POST'}); refresh(); };
+$('btn-reset').onclick = async () => { await j('/api/lab/reset', {method:'POST'}); refresh(); };
+const proto = location.protocol;
+const host = location.hostname;
+$("link-victim").href = proto + "//" + host + ":8002";
+$("link-attacker").href = proto + "//" + host + ":8001";
+loadFamilies();
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

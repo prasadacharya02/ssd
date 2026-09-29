@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer base {
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Inter, system-ui, sans-serif;
+    background: #e9eef5;
+    color: #202020;
+  }
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+  button:focus-visible,
+  select:focus-visible {
+    outline: 2px solid #0078d4;
+    outline-offset: -2px;
+  }
+  button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+@layer components {
+  .tool {
+    @apply flex shrink-0 items-center gap-2 rounded px-3 py-2 text-xs hover:bg-slate-100 disabled:hover:bg-transparent;
+  }
+  .nav-button {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded hover:bg-slate-100;
+  }
+  .side-item {
+    @apply relative flex w-full items-center gap-3 rounded px-3 py-2 text-left text-xs hover:bg-slate-100;
+  }
+  .side-item.active {
+    @apply bg-blue-100/60 text-blue-900;
+  }
+  .side-item.active::before {
+    content: "";
+    @apply absolute left-0 h-4 w-[3px] rounded bg-blue-600;
+  }
+  .folder-icon {
+    width: 76px;
+    height: 70px;
+    margin: 0 auto 13px;
+  }
+  .folder-tile {
+    @apply flex min-h-[166px] flex-col items-center rounded border border-transparent px-2 py-5 text-center hover:border-blue-200 hover:bg-blue-50/70 focus-visible:bg-blue-100/60;
+  }
+}
+.window {
+  height: min(780px, calc(100dvh - 92px));
+}
+.window.maximized {
+  height: calc(100dvh - 38px);
+  border-radius: 0;
+}
+.dialog::backdrop {
+  background: rgb(15 23 42 / 0.25);
+}
+@media (max-width: 700px) {
+  .window {
+    height: calc(100dvh - 38px);
+    border-radius: 0;
+  }
+  .folder-icon {
+    width: 62px;
+    height: 60px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse {
+    animation: none;
+  }
+}
