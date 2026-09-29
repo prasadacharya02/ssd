@@ -200,28 +200,25 @@ EXCHANGE_CONFIRM_THRESHOLD = _env_int("ENTROPY_EXCHANGE_CONFIRM_THRESHOLD", 2, m
 EXCHANGE_ENABLED = _env_bool("ENTROPY_EXCHANGE", True)
 
 # ── Web Servers & Hosts ──────────────────────────────────────
+# The *_HOST values above are BIND addresses: "0.0.0.0" means "every
+# interface" and is not a destination a browser can open. So a PUBLIC_*_URL
+# is never synthesised from a bind address — these are explicit operator
+# overrides only (ENTROPY_PUBLIC_*_URL). When unset, the attacker console
+# resolves the sibling links from the incoming request instead, which keeps
+# them correct behind port-forwarding and port-labelled preview proxies.
 DASHBOARD_HOST = os.getenv("ENTROPY_DASHBOARD_HOST", "127.0.0.1")
 DASHBOARD_PORT = _env_int("ENTROPY_DASHBOARD_PORT", 5000, minimum=1)
 FLASK_HOST = DASHBOARD_HOST
 FLASK_PORT = DASHBOARD_PORT
-PUBLIC_DASHBOARD_URL = (
-    os.getenv("ENTROPY_PUBLIC_DASHBOARD_URL", "").strip()
-    or f"http://{DASHBOARD_HOST}:{DASHBOARD_PORT}"
-)
+PUBLIC_DASHBOARD_URL = os.getenv("ENTROPY_PUBLIC_DASHBOARD_URL", "").strip()
 
 VICTIM_HOST = os.getenv("ENTROPY_VICTIM_HOST", "127.0.0.1")
 VICTIM_PORT = _env_int("ENTROPY_VICTIM_PORT", 5001, minimum=1)
-PUBLIC_VICTIM_URL = (
-    os.getenv("ENTROPY_PUBLIC_VICTIM_URL", "").strip()
-    or f"http://{VICTIM_HOST}:{VICTIM_PORT}"
-)
+PUBLIC_VICTIM_URL = os.getenv("ENTROPY_PUBLIC_VICTIM_URL", "").strip()
 
 ATTACKER_HOST = "0.0.0.0"
 ATTACKER_PORT = _env_int("ENTROPY_ATTACKER_PORT", 8001, minimum=1)
-PUBLIC_ATTACKER_URL = (
-    os.getenv("ENTROPY_PUBLIC_ATTACKER_URL", "").strip()
-    or f"http://127.0.0.1:{ATTACKER_PORT}"
-)
+PUBLIC_ATTACKER_URL = os.getenv("ENTROPY_PUBLIC_ATTACKER_URL", "").strip()
 
 DEBUG_MODE = _env_bool("ENTROPY_DEBUG", False)
 SECRET_KEY = os.getenv("ENTROPY_SECRET_KEY", "entropy-local-development-only")

@@ -530,22 +530,82 @@ def send_text(
     )
 
 
-def _runtime_links(handler):
-    """Public URLs for the sibling services, resolved per request."""
-    host_header = handler.headers.get("Host", "127.0.0.1:8001")
-    host = host_header.split(":", 1)[0]
+# Bind addresses that describe "every interface" and can never be opened by
+# a browser, so they must not be propagated into a published link.
+_WILDCARD_HOSTNAMES = frozenset({"0.0.0.0", "::", "[::]", "*", ""})
+
+
+def _sibling_url(handler, own_port, sibling_port, override):
+    """Resolve a sibling service URL that is reachable from *this* client.
+
+    *override* (an explicit ``ENTROPY_PUBLIC_*_URL``) wins outright.
+    Otherwise the URL is derived from the request's Host header so it stays
+    valid however the lab is published:
+
+      ``127.0.0.1:8001``          -> ``127.0.0.1:5000``     (plain host:port)
+      ``8001-preview.example.com``-> ``5000-preview.example.com``
+                                  (port-labelled reverse proxy — the shape
+                                   hosted/preview environments use)
+
+    Deriving from the request is what stops the console from ever emitting a
+    wildcard bind address such as ``http://0.0.0.0:5000``, which no browser
+    can open.
+    """
+    if override:
+        return override
+
     scheme = "https" if handler.headers.get("X-Forwarded-Proto") == "https" else "http"
+    host_header = (handler.headers.get("Host") or "").strip()
+
+    # Strip any port, tolerating the bracketed IPv6 form "[::1]:8001".
+    if host_header.startswith("["):
+        end = host_header.find("]")
+        hostname = host_header[1:end] if end != -1 else ""
+    else:
+        hostname = host_header.partition(":")[0]
+
+    # A client that typed the bind address itself sends Host: 0.0.0.0 — not a
+    # destination, so fall back to loopback rather than echoing it back.
+    if hostname in _WILDCARD_HOSTNAMES:
+        hostname = "127.0.0.1"
+
+    prefix = f"{own_port}-"
+    if hostname.startswith(prefix):
+        return f"{scheme}://{sibling_port}-{hostname[len(prefix):]}"
+    # IPv6 literals must stay bracketed inside a URL authority.
+    literal = f"[{hostname}]" if ":" in hostname else hostname
+    return f"{scheme}://{literal}:{sibling_port}"
+
+
+def _runtime_links(handler, client_derives=False):
+    """Public URLs for the sibling services, resolved per request.
+
+    *client_derives* is set for the React console, which resolves its own
+    links from ``window.location``. That is strictly more reliable than
+    anything the server can infer, because a proxy is free to rewrite the
+    Host header before the request arrives — so for that page we inject only
+    an explicit operator override and leave the rest empty, letting the
+    browser's own URL win.
+    """
+    def link(sibling_port, override):
+        if client_derives:
+            return override
+        return _sibling_url(handler, config.ATTACKER_PORT, sibling_port, override)
 
     return {
-        "__VICTIM_URL__": config.PUBLIC_VICTIM_URL or f"{scheme}://{host}:8002",
-        "__DASHBOARD_URL__": config.PUBLIC_DASHBOARD_URL or f"{scheme}://{host}:5000",
-        "__ATTACKER_URL__": config.PUBLIC_ATTACKER_URL or f"{scheme}://{host}:8001",
+        "__VICTIM_URL__": link(config.VICTIM_PORT, config.PUBLIC_VICTIM_URL),
+        "__DASHBOARD_URL__": link(config.DASHBOARD_PORT,
+                                  config.PUBLIC_DASHBOARD_URL),
+        "__ATTACKER_URL__": link(config.ATTACKER_PORT,
+                                 config.PUBLIC_ATTACKER_URL),
         "__CONTROL_TOKEN__": getattr(config, "CONTROL_TOKEN", "") or "",
     }
 
 
-def _render_html(html, handler):
-    for placeholder, value in _runtime_links(handler).items():
+def _render_html(html, handler, client_derives=False):
+    for placeholder, value in _runtime_links(
+        handler, client_derives=client_derives
+    ).items():
         html = html.replace(placeholder, value)
     return html
 
@@ -555,15 +615,23 @@ def console_index_available():
 
 
 def send_console_html(handler):
-    """Serve the built React console with runtime values injected."""
+    """Serve the built React console with runtime values injected.
+
+    The bundle resolves the sibling links itself (see console-config.js), so
+    only an explicit operator override is injected here.
+    """
     with open(CONSOLE_INDEX, "r", encoding="utf-8") as file:
-        html = _render_html(file.read(), handler)
+        html = _render_html(file.read(), handler, client_derives=True)
 
     _send_bytes(handler, html.encode("utf-8"), "text/html; charset=utf-8")
 
 
 def send_html(handler):
-    """Legacy single-file console (fallback when the bundle is absent)."""
+    """Legacy single-file console (fallback when the bundle is absent).
+
+    Static HTML cannot derive a link at runtime, so the server resolves the
+    values from the request for this page.
+    """
     with open(LEGACY_HTML_PATH, "r", encoding="utf-8") as file:
         html = _render_html(file.read(), handler)
 

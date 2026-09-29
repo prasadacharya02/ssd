@@ -21,8 +21,35 @@ const navIcons = {
   Quarantine: "lock",
   "Local Disk (C:)": "pc",
 };
-async function api(path, options) {
-  const res = await fetch(path, options);
+/**
+ * Vault credential, mirrored from the login response.
+ *
+ * The session cookie is the primary mechanism, but browsers withhold
+ * cookies from an embedded (iframe) view and block third-party cookies
+ * outright in some configurations — in which case the PIN would be accepted
+ * and the vault would then render empty. Keeping the signed token here and
+ * replaying it in a header makes the unlock independent of cookie policy.
+ */
+const VAULT_TOKEN_KEY = "entropy.vault.token";
+let vaultToken =
+  (typeof sessionStorage !== "undefined" &&
+    sessionStorage.getItem(VAULT_TOKEN_KEY)) ||
+  "";
+
+function setVaultToken(token) {
+  vaultToken = token || "";
+  try {
+    if (vaultToken) sessionStorage.setItem(VAULT_TOKEN_KEY, vaultToken);
+    else sessionStorage.removeItem(VAULT_TOKEN_KEY);
+  } catch {
+    /* private mode / storage disabled — the in-memory copy still works */
+  }
+}
+
+async function api(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (vaultToken) headers["X-Vault-Token"] = vaultToken;
+  const res = await fetch(path, { ...options, headers });
   const data = await res.json();
   if (!res.ok) {
     const error = new Error(
@@ -71,7 +98,10 @@ export function App() {
   const [folders, setFolders] = useState([]),
     [files, setFiles] = useState([]),
     [query, setQuery] = useState("");
-  const [sample, setSample] = useState(true),
+  // Default to the REAL filesystem. The simulation layout exists only as an
+  // optional presentation aid; opening on hardcoded sample counts made the
+  // estate look unchanged no matter what the pipeline did.
+  const [sample, setSample] = useState(false),
     [unlocked, setUnlocked] = useState(false),
     [error, setError] = useState("");
   const [busy, setBusy] = useState(false),
@@ -116,6 +146,7 @@ export function App() {
           setError("Connection unavailable. " + e.message);
           setFiles([]);
           if (e.status === 401) {
+            setVaultToken("");
             setUnlocked(false);
             setDialog(null);
           }
@@ -156,6 +187,7 @@ export function App() {
     if (!unlocked) return loginDialog();
     try {
       await api("/api/vault/logout", { method: "POST" });
+      setVaultToken("");
       setUnlocked(false);
       setFiles([]);
       setDialog(null);
@@ -169,11 +201,12 @@ export function App() {
     setAuthBusy(true);
     setAuthError("");
     try {
-      await api("/api/vault/login", {
+      const result = await api("/api/vault/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, pin }),
       });
+      setVaultToken(result.token);
       setUnlocked(true);
       setDialog(null);
       navigate("Quarantine");
@@ -205,6 +238,7 @@ export function App() {
       );
     } catch (e) {
       if (e.status === 401) {
+        setVaultToken("");
         setUnlocked(false);
         loginDialog();
       } else
